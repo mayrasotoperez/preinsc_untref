@@ -2,6 +2,7 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import pandas as pd
 
 ################################## APP SETTING ###############################
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -50,7 +51,7 @@ def generate_table(dataframe, max_rows=10):
 app.layout = html.Div(children=[
 
     # titulo
-    html.H1(children='Hello Dash'),
+    html.H2(children='Hello Dash'),
 
     html.Div(children='''
                           Dash: A web application framework for Python.
