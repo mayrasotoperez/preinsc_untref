@@ -164,7 +164,7 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 app.title = 'Dash Testing'
 
-#server = app.server # the Flask app
+server = app.server # the Flask app
 
 ################################## APP SETTING ###############################
 ################################## APP LAYOUT ################################
