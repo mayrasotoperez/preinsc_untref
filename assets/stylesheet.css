@@ -1,21 +1,37 @@
-/*.banner{*/
-/*    height: 80px;*/
-/*    margin: 0px -10px 10px;*/
-/*    background-color: #FFFFFF;*/
-/*    border-radius: 2px;*/
-/*}*/
+.cuerpo{
+    padding-left:30px;
+    padding-right:30px;
+}
 
-/*.banner h2{*/
-/*    color: darkblue;*/
-/*    padding-top: 10px;*/
-/*    margin-left: 2%;*/
-/*    display: inline-block;*/
-/*}*/
+.carrera{
+    float: left;
+    right: 10px;
+    padding: 10px;
+    background-color: gray;
+    border-radius: 5px;
+    box-shadow: darkblue;
+    font-weight: bolder;
+    color :white;
+}
 
-/*.banner Img{*/
-/*    position: relative;*/
-/*    float: right;*/
-/*    right: 10px;*/
-/*    height: 60px;*/
-/*    padding: 1%;*/
-/*}*/
+.sigla{
+    position: bottom;
+    float: left;
+    right: 10px;
+    padding: 10px;
+    color:darkblue;
+    /*background-color: gray;*/
+    border-radius: 5px;
+    box-shadow: darkblue;
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.niveles{
+        margin-left: 00px;
+}
+
+.linea{
+        margin-bottom: 10px;
+        margin-top: 10px;
+}

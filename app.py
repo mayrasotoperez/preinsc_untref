@@ -101,7 +101,7 @@ pais_dic = {1: 'Argentino', 2: 'Extranjero', 3: 'Naturalizado', 4: 'Por Opción'
 preinscriptos['nacionalidad'] = preinscriptos.nacionalidad.map(pais_dic)
 # Tipo DOC
 names = ['id', 'doc', 'sigla', 'a', 'b', 'c', 'd', 'e', 'f']
-docus = pd.read_csv('mdp_tipo_documento.csv', sep='|', index_col=None, names=names)
+docus = pd.read_csv('assets/mdp_tipo_documento.csv', sep='|', index_col=None, names=names)
 docu_dic = {docus.id.iloc[i]: docus.sigla.iloc[i] for i in range(len(docus))}
 preinscriptos['tipo_documento'] = preinscriptos.tipo_documento.map(docu_dic)
 # Sexo
@@ -125,7 +125,7 @@ pre = pre.sort_values(by='Fecha')
 pre['cant'] = range(1,len(pre)+1)
 
 
-siglas = pd.read_csv('siglas.csv', sep='|', header=None)
+siglas = pd.read_csv('assets/siglas.csv', sep='|', header=None)
 siglas[2] = [siglas[0].iloc[i].split(' ')[0] for i in range(len(siglas))]
 
 siglas = siglas.loc[siglas[0].isin(propuestas)]
