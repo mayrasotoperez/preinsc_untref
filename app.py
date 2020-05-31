@@ -96,23 +96,18 @@ for i in range(len(preinscriptos)):
         preinscriptos.loc[i, 'edad'] = calculate_age(preinscriptos.fecha_nacimiento.iloc[i])
     except:
         preinscriptos.loc[i, 'edad'] = 'No informa'
-
-#### pais DOC
+# pais DOC
 pais_dic = {1: 'Argentino', 2: 'Extranjero', 3: 'Naturalizado', 4: 'Por Opción'}
 preinscriptos['nacionalidad'] = preinscriptos.nacionalidad.map(pais_dic)
-
-#### Tipo DOC
+# Tipo DOC
 names = ['id', 'doc', 'sigla', 'a', 'b', 'c', 'd', 'e', 'f']
 docus = pd.read_csv('mdp_tipo_documento.csv', sep='|', index_col=None, names=names)
 docu_dic = {docus.id.iloc[i]: docus.sigla.iloc[i] for i in range(len(docus))}
 preinscriptos['tipo_documento'] = preinscriptos.tipo_documento.map(docu_dic)
-#### Sexo
+# Sexo
 preinscriptos.sexo.fillna('0', inplace=True)
-sex_dic = {'0': 'No informa',
-           '1': 'Masculino',
-           '2': 'Femenino'}
+sex_dic = {'0': 'No informa','1': 'Masculino','2': 'Femenino'}
 preinscriptos['sexo'] = preinscriptos.sexo.map(sex_dic)
-
 # ---------------------------------------------------------------------------------
 ############################## COLUMNAS FINALES ##################################
 pre = preinscriptos[['fecha_preinscripcion', 'carrera', 'apellido', 'nombres',
@@ -126,20 +121,27 @@ propuestas = list(pre.Carrera.unique())
 
 
 pre.fillna('No informa', inplace=True)
-
 pre = pre.sort_values(by='Fecha')
-
 pre['cant'] = range(1,len(pre)+1)
 
 
-pre.to_csv('sarasa.csv')
-
-
 siglas = pd.read_csv('siglas.csv', sep='|', header=None)
+siglas[2] = [siglas[0].iloc[i].split(' ')[0] for i in range(len(siglas))]
+
+siglas = siglas.loc[siglas[0].isin(propuestas)]
+siglas.reset_index(inplace=True,drop=True)
 
 siglas_dic = {siglas[0].iloc[i]:siglas[1].iloc[i] for i in range(len(siglas))}
-siglas_dic.update({'': 'Total Posgrados'})
+siglas_dic.update({'Total Institución': ''})
 
+niveles = ['Total Institución','Curso', 'Doctorado', 'Diplomatura', 'Especialización', 'Maestría']
+
+
+all_options = {}
+
+for niv in niveles:
+    cont = list(siglas.loc[siglas[2] == niv][0].unique())
+    all_options.update({niv:cont})
 
 
 ################################### RAW PYTHON ###############################
@@ -147,20 +149,14 @@ siglas_dic.update({'': 'Total Posgrados'})
 trace_totales = go.Scatter()
 trace_sexo = go.Bar()
 
-
-
 data_sexo_dic = dict(pre['Sexo'].value_counts())
-
-
 
 labels = ['Femenino','Masculino','No informa']
 values = []
 
 for i in labels:
-    try:
-        value = data_sexo_dic[i]
-    except:
-        value = 0
+    try:         value = data_sexo_dic[i]
+    except:      value = 0
     values.append(value)
 
 
@@ -180,15 +176,27 @@ server = app.server # the Flask app
 
 ################################## APP SETTING ###############################
 ################################## APP LAYOUT ################################
-input_value = ''
+input_value = 'Total Institución'
 
 app.layout = html.Div([
 
     # titulo
     html.Div([
-        html.H2('Preinscripciones de Posgrados',className='eight columns'),
-        html.Img(src='/assets/untref.jpg',className='four columns'),
+        html.H2('Preinscripciones de Posgrados', className='eight columns'),
+        html.Img(src='/assets/untref.jpg', className='four columns'),
     ], className='row'),
+    html.Hr(className='linea'),
+
+    dcc.RadioItems(
+        id='nivel_elegido',
+        options=[{'label': k, 'value': k} for k in all_options.keys()],
+        value='Total Institución',
+        labelStyle={'display': 'inline-block','margin-right':'15px'},
+        className='niveles'
+    ),
+
+    #dcc.RadioItems(id='cities-radio'),
+    html.Hr(className='linea'),
 
     html.Div([
         html.Label('Seleccione una propuesta',className='row'),
@@ -197,13 +205,13 @@ app.layout = html.Div([
                               for i in range(len(propuestas))],
                      id = 'carrera_elegida',
                      value='',
+                     clearable=False,
                      ),
 
     ], className='row'),
 
-
     html.Div([
-        html.H4(
+        html.H4(children='',
                 id='subtitulo',
                 className='twelve columns, carrera'
                 ),
@@ -213,6 +221,7 @@ app.layout = html.Div([
                 ),
     ], className='row'),
 
+    # Graficos
     html.Div([
         html.Div([
             dcc.Graph(
@@ -220,8 +229,7 @@ app.layout = html.Div([
             ),
         ],className="eight columns"),
 
-
-        #segundo grafico
+    # SEXO
         html.Div([
             dcc.Graph(
                 id='graph_sexo',
@@ -229,19 +237,31 @@ app.layout = html.Div([
         ],className="four columns"),
     ],className="row"),
 
-    # html.Div(
-    #     dcc.Input(
-    #         id='stock-input',
-    #         placeholder='Enter a Stock to be charted',
-    #         type='text',
-    #         value='',
-    #     ),
-    # ),
-
-
-])
+],className='cuerpo')
 ################################## APP LAYOUT ###################################
 ################################## CALL BACKS ###################################
+
+
+@app.callback(
+    Output('carrera_elegida', 'options'),
+    [Input('nivel_elegido', 'value')])
+def set_cities_options(selected_country):
+
+    niveles_lst = [{'label': i, 'value': i} for i in all_options[selected_country]]
+
+    niveles_lst.append({'label':'Total Institución','value':'Total Institución'})
+
+    return niveles_lst
+
+
+@app.callback(
+    Output('carrera_elegida', 'value'),
+    [Input('carrera_elegida', 'options')])
+def set_cities_value(available_options):
+    return available_options[0]['value']
+
+
+
 @app.callback(
             [dash.dependencies.Output('subtitulo', 'children'),
              dash.dependencies.Output('subtitulo_sigla', 'children'),
@@ -251,9 +271,9 @@ app.layout = html.Div([
             [dash.dependencies.Input('carrera_elegida', 'value')])
 
 
-def update_subtitulo(input_value):
+def update_datos(input_value):
 
-    if input_value == '':
+    if input_value == 'Total Institución':
         vista = pre[['Fecha','cant']].copy()
         layout_a = {'title': 'Inscripciones Totales'}
 
@@ -299,17 +319,30 @@ def update_subtitulo(input_value):
                         )
     data_sexo_lst.append(trace_sexo)
 
-    return [input_value,
-            'Sigla: '+siglas_dic[input_value],
-            {
-            'data':data_fechas,
-            'layout':layout_a,
-            },
-            {
-            'data': data_sexo_lst,
-            'layout': layout_b,
-            }
-            ]
+    if input_value == 'Total Institución':
+        return [input_value,
+                siglas_dic[input_value],
+                {
+                'data':data_fechas,
+                'layout':layout_a,
+                },
+                {
+                'data': data_sexo_lst,
+                'layout': layout_b,
+                }
+                ]
+    else:
+        return [input_value,
+                'Sigla: ' + siglas_dic[input_value],
+                {
+                    'data': data_fechas,
+                    'layout': layout_a,
+                },
+                {
+                    'data': data_sexo_lst,
+                    'layout': layout_b,
+                }
+                ]
 
 ################################### APP LOOP ####################################
 if __name__ == '__main__':
