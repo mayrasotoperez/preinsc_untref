@@ -132,6 +132,7 @@ pre = pre.sort_values(by='Fecha')
 pre['cant'] = range(1,len(pre)+1)
 
 
+pre.to_csv('sarasa.csv')
 
 
 siglas = pd.read_csv('siglas.csv', sep='|', header=None)
