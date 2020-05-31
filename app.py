@@ -117,43 +117,54 @@ preinscriptos['sexo'] = preinscriptos.sexo.map(sex_dic)
 ############################## COLUMNAS FINALES ##################################
 pre = preinscriptos[['fecha_preinscripcion', 'carrera', 'apellido', 'nombres',
                      'nacionalidad', 'edad', 'tipo_documento', 'nro_documento',
-                     'sexo', 'celular_numero', 'e_mail']]
+                     'sexo', 'celular_numero', 'e_mail']].copy()
 
 pre.columns = ['Fecha', 'Carrera', 'Apellidos', 'Nombres', 'Nacionalidad', 'Edad', 'Doc. tipo',
                'Doc. número', 'Sexo', 'Celular', 'e_mail']
 
 propuestas = list(pre.Carrera.unique())
-#propuestas.sort()
 
 
 pre.fillna('No informa', inplace=True)
-#propuestas.append('')
 
-#pre = pre.loc[pre.Carrera == 'Maestría en Periodismo Documental']
-################################### CONSULTA DB ###############################
-
-
-
-pre.sort_values(by='Fecha',inplace=True)
+pre = pre.sort_values(by='Fecha')
 
 pre['cant'] = range(1,len(pre)+1)
 
 
+
+
+siglas = pd.read_csv('siglas.csv', sep='|', header=None)
+
+siglas_dic = {siglas[0].iloc[i]:siglas[1].iloc[i] for i in range(len(siglas))}
+siglas_dic.update({'': 'Total Posgrados'})
+
+
+
 ################################### RAW PYTHON ###############################
 
-trace_close2 = go.Bar(x=list(pre.Fecha),
-                     y=list(pre.index),
-                     name='Close',
-                     #line=dict(color='#f44242')
-                     )
-data2 = [trace_close2]
+trace_totales = go.Scatter()
+trace_sexo = go.Bar()
 
 
-# layout = dict(title='Crecimiento de Preinscripciones',
-#               showlegend=False
-#               )
-# fig = dict(data=data, layout=layout)
 
+data_sexo_dic = dict(pre['Sexo'].value_counts())
+
+
+
+labels = ['Femenino','Masculino','No informa']
+values = []
+
+for i in labels:
+    try:
+        value = data_sexo_dic[i]
+    except:
+        value = 0
+    values.append(value)
+
+
+print('************************* DATA LISTA**************************************')
+print(pre['Sexo'].value_counts())
 
 ################################### RAW PYTHON ###############################
 ################################## APP SETTING ###############################
@@ -168,7 +179,7 @@ server = app.server # the Flask app
 
 ################################## APP SETTING ###############################
 ################################## APP LAYOUT ################################
-
+input_value = ''
 
 app.layout = html.Div([
 
@@ -177,7 +188,6 @@ app.layout = html.Div([
         html.H2('Preinscripciones de Posgrados',className='eight columns'),
         html.Img(src='/assets/untref.jpg',className='four columns'),
     ], className='row'),
-
 
     html.Div([
         html.Label('Seleccione una propuesta',className='row'),
@@ -190,30 +200,32 @@ app.layout = html.Div([
 
     ], className='row'),
 
-    # html.Div(
-    #     dcc.Graph(id='Stock Chart',
-    #               figure=fig)
-    # ),
+
+    html.Div([
+        html.H4(
+                id='subtitulo',
+                className='twelve columns, carrera'
+                ),
+        html.P(
+                id='subtitulo_sigla',
+                className='two columns, sigla'
+                ),
+    ], className='row'),
 
     html.Div([
         html.Div([
             dcc.Graph(
-                id='graph_close',
+                id='graph_fechas',
             ),
-        ],className="ten columns"),
+        ],className="eight columns"),
 
-        # segundo grafico
-        # html.Div([
-        #     dcc.Graph(
-        #         id='graph_close-1',
-        #         figure={
-        #             'data': data2,
-        #             'layout': {
-        #                 'title': 'Close Graph'
-        #             }
-        #         }
-        #     ),
-        # ],className="six columns"),
+
+        #segundo grafico
+        html.Div([
+            dcc.Graph(
+                id='graph_sexo',
+            ),
+        ],className="four columns"),
     ],className="row"),
 
     # html.Div(
@@ -229,38 +241,74 @@ app.layout = html.Div([
 ])
 ################################## APP LAYOUT ###################################
 ################################## CALL BACKS ###################################
+@app.callback(
+            [dash.dependencies.Output('subtitulo', 'children'),
+             dash.dependencies.Output('subtitulo_sigla', 'children'),
+             dash.dependencies.Output('graph_fechas', 'figure'),
+             dash.dependencies.Output('graph_sexo', 'figure'),],
 
-@app.callback(dash.dependencies.Output("graph_close",'figure'),
-             [dash.dependencies.Input("carrera_elegida",'value')]
-             )
+            [dash.dependencies.Input('carrera_elegida', 'value')])
 
 
-def update_fig(input_value):
+def update_subtitulo(input_value):
 
     if input_value == '':
+        vista = pre[['Fecha','cant']].copy()
+        layout_a = {'title': 'Inscripciones Totales'}
 
-        vista = pre.copy()
+        vista_b = pre[['Sexo']].copy
+        data_sexo_dic = dict(pre['Sexo'].value_counts())
+        layout_b = {'title': 'Inscripciones Totales por Sexo'}
+
     else:
-        vista = pre.loc[pre.Carrera == input_value]
+        vista = pre.loc[pre.Carrera == input_value][['Fecha','cant']].copy()
         vista['cant'] = range(1,len(vista)+1)
 
-    data = []
-    trace_close = go.Scatter(x=list(vista.Fecha),
+        layout_a = {'title': 'Detalle por fecha'}
+
+        vista_b = pre.loc[pre.Carrera == input_value][['Sexo']].copy()
+        data_sexo_dic = dict(vista_b['Sexo'].value_counts())
+        layout_b = {'title': 'Detalle por sexo'}
+
+    # GRAFICO DE FECHAS
+    data_fechas = []
+    trace_fechas = go.Scatter(x=list(vista.Fecha),
                              y=list(vista.cant),
-                             name='Close',
+                             name='fechas',
                              line=dict(color='#f44242'),
-
                              )
-    data.append(trace_close)
+    data_fechas.append(trace_fechas)
 
-    layout = {'title':input_value}
+    # GRAFICO DE SEXOS
+    sex_labels = ['Femenino', 'Masculino', 'No informa']
+    sex_values = []
+    for i in sex_labels:
+        try:
+            value = data_sexo_dic[i]
+        except:
+            value = 0
+        sex_values.append(value)
 
-    return {
-        'data':data,
-        'layout':layout
-    }
+    data_sexo_lst = []
+    trace_sexo = go.Bar(x=sex_labels,
+                        y=sex_values,
+                        name='sexos',
+                        text=sex_values,
+                        textposition='auto',
+                        )
+    data_sexo_lst.append(trace_sexo)
 
-
+    return [input_value,
+            'Sigla: '+siglas_dic[input_value],
+            {
+            'data':data_fechas,
+            'layout':layout_a,
+            },
+            {
+            'data': data_sexo_lst,
+            'layout': layout_b,
+            }
+            ]
 
 ################################### APP LOOP ####################################
 if __name__ == '__main__':
