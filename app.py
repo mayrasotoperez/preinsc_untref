@@ -14,29 +14,16 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Output, Input
 
-
-
-
-import consulta
-consulta.consulta_db()
-
-
 #import xlsxwriter.utility as xls
 #from xlsxwriter.utility import xl_rowcol_to_cell
 
-################################### IMPORTING #################################
-
-
 ################################### CONSULTA DB ###############################
-
+import consulta
+consulta.consulta_db()
 pre = pd.read_csv('consulta.csv', sep='|')
 
+
 propuestas = list(pre.Carrera.unique())
-
-
-pre.fillna('No informa', inplace=True)
-pre = pre.sort_values(by='Fecha')
-pre['cant'] = range(1,len(pre)+1)
 
 
 siglas = pd.read_csv('assets/siglas.csv', sep='|', header=None)

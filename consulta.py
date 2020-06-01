@@ -101,5 +101,9 @@ def consulta_db():
     pre.columns = ['Fecha', 'Carrera', 'Apellidos', 'Nombres', 'Nacionalidad', 'Edad', 'Doc. tipo',
                    'Doc. número', 'Sexo', 'Celular', 'e_mail']
 
+    pre.fillna('No informa', inplace=True)
+    pre = pre.sort_values(by='Fecha')
+    pre['cant'] = range(1, len(pre) + 1)
+
     pre.to_csv('consulta.csv', index=None, sep='|')
 
