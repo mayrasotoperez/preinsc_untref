@@ -15,6 +15,12 @@ import dash_html_components as html
 from dash.dependencies import Output, Input
 
 
+
+
+import consulta
+consulta.consulta_db()
+
+
 #import xlsxwriter.utility as xls
 #from xlsxwriter.utility import xl_rowcol_to_cell
 
@@ -51,6 +57,7 @@ for niv in niveles:
     cont = list(siglas.loc[siglas[2] == niv][0].unique())
     all_options.update({niv:cont})
 
+import consulta
 
 ################################### RAW PYTHON ###############################
 
