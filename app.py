@@ -17,8 +17,8 @@ from dash.dependencies import Output, Input
 
 
 
-# import consulta
-# consulta.consulta_db()
+import consulta
+consulta.consulta_db()
 
 
 #import xlsxwriter.utility as xls
