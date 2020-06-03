@@ -1,9 +1,14 @@
-import numpy as np; import pandas as pd
+import numpy as np;
+import pandas as pd
 
-import time; import datetime
+import time;
+import datetime
 from datetime import date
 
 import psycopg2, psycopg2.extras
+
+import warnings
+warnings.filterwarnings('ignore')
 
 def consulta_db():
     # nos conectamos a la base de preinscripcion
@@ -18,7 +23,8 @@ def consulta_db():
     sga_pre = pd.DataFrame(rows)
     # print (rows)
     sga_pre.columns = ['id_preinscripcion', 'version_modificacion', 'version_impresa', 'usuario', 'apellido', 'nombres',
-                       'nacionalidad', 'tipo_documento', 'nro_documento', 'sexo', 'fecha_nacimiento', 'alu_otestsup_uni',
+                       'nacionalidad', 'tipo_documento', 'nro_documento', 'sexo', 'fecha_nacimiento',
+                       'alu_otestsup_uni',
                        'alu_otestsup_carr', 'celular_numero', 'estado_civil', 'e_mail', 'estado']
     # sga_preinscripcion_propuestas
     # nos conectamos a la base de preinscripcion
@@ -33,7 +39,8 @@ def consulta_db():
     sga_prepro.columns = ['preinscripcion_propuesta', 'id_preinscripcion', 'propuesta', 'fecha_preinscripcion']
     # sga_propuestas
     # nos conectamos a la base de preinscripcion
-    conn = psycopg2.connect(database='guarani3162posgrado', user='postgres', password='uNTreF2019!!', host='170.210.45.210')
+    conn = psycopg2.connect(database='guarani3162posgrado', user='postgres', password='uNTreF2019!!',
+                            host='170.210.45.210')
     # testing corto, si imprime funciona...
     cur = conn.cursor()
     cur.execute('''SELECT propuesta, nombre, nombre_abreviado, codigo
@@ -61,18 +68,17 @@ def consulta_db():
     preinscriptos.reset_index(inplace=True, drop=True)
 
     #### Formato Fechas de preinscripcion
-    preinscriptos['fecha_preinscripcion'] = [preinscriptos.fecha_preinscripcion.iloc[x].date().__format__('%d-%m-%Y') for x
+    preinscriptos['fecha_preinscripcion'] = [preinscriptos.fecha_preinscripcion.iloc[x].date().__format__('%d-%m-%Y')
+                                             for x
                                              in range(len(preinscriptos))]
     preinscriptos['fecha_preinscripcion'] = [
         datetime.datetime.strptime(preinscriptos.fecha_preinscripcion.iloc[x], '%d-%m-%Y') for x in
         range(len(preinscriptos))]
 
-
     #### De fecha a edad
     def calculate_age(born):
         today = datetime.date.today()
         return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
-
 
     preinscriptos['edad'] = ''
     for i in range(len(preinscriptos)):
@@ -93,17 +99,23 @@ def consulta_db():
     sex_dic = {'0': 'No informa', '1': 'Masculino', '2': 'Femenino'}
     preinscriptos['sexo'] = preinscriptos.sexo.map(sex_dic)
     # ---------------------------------------------------------------------------------
+    preinscriptos['nivel'] = [preinscriptos.carrera.iloc[i].split(' ')[0] for i in range(len(preinscriptos))]
     ############################## COLUMNAS FINALES ##################################
-    pre = preinscriptos[['fecha_preinscripcion', 'carrera', 'apellido', 'nombres',
+    pre = preinscriptos[['fecha_preinscripcion', 'nivel', 'carrera', 'apellido', 'nombres',
                          'nacionalidad', 'edad', 'tipo_documento', 'nro_documento',
                          'sexo', 'celular_numero', 'e_mail']].copy()
 
-    pre.columns = ['Fecha', 'Carrera', 'Apellidos', 'Nombres', 'Nacionalidad', 'Edad', 'Doc. tipo',
-                   'Doc. número', 'Sexo', 'Celular', 'e_mail']
+    pre.columns = ['fecha', 'nivel', 'carrera', 'ape', 'nom', 'nac', 'edad',
+                   'tipo_doc', 'nro_doc', 'sexo', 'celular', 'e_mail']
 
     pre.fillna('No informa', inplace=True)
-    pre = pre.sort_values(by='Fecha')
-    pre['cant'] = range(1, len(pre) + 1)
+    pre = pre.sort_values(by='fecha')
 
-    pre.to_csv('consulta.csv', index=None, sep='|')
+    for i in range(len(pre)):
+        if pre.celular.iloc[i] == '0--15-':
+            pre.celular.iloc[i] = 'No informa'
 
+        pre.celular.iloc[i] = pre.celular.iloc[i].replace('--','-')
+
+
+    return pre

@@ -1,6 +1,6 @@
 .cuerpo{
-    padding-left:30px;
-    padding-right:30px;
+    padding-left:10%;
+    padding-right:10%;
 }
 
 .carrera{
@@ -34,4 +34,9 @@
 .linea{
         margin-bottom: 10px;
         margin-top: 10px;
+}
+.span{
+    color: #555555;
+    font-size: 12px;
+
 }
