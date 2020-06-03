@@ -228,7 +228,7 @@ def update_datos(input_value):
     else:
         vista = pre.loc[pre.carrera == input_value][['fecha','cant']].copy()
         vista['cant'] = range(1,len(vista)+1)
-        tabla = pre.loc[pre.carrera == input_value][['fecha','ape','nom','nac','edad','tipo_doc','nro_doc','sexo','celular','e_mail']].copy()
+        tabla = pre.loc[pre.carrera == input_value][['fecha','ape','nom','nac','edad','tipo_doc','nro_doc','sexo']].copy() # agregar 'celular','e_mail' en produccion
 
         layout_a = {'title': 'Detalle por fecha'}
 
