@@ -1,8 +1,14 @@
 ##################################### IMPORTING ################################
 # -*- coding: utf-8 -*-
 import numpy as np ; import pandas as pd
+import assets.consulta as consulta
 import time ; import datetime ; from datetime import date
 import plotly.graph_objs as go
+import io
+
+import base64
+import flask
+from flask import send_file
 
 import dash
 import dash_core_components as dcc
@@ -14,31 +20,33 @@ import urllib
 import urllib.parse
 import openpyxl
 
-#import xlsxwriter.utility as xls
-#from xlsxwriter.utility import xl_rowcol_to_cell
+from xlsxwriter.utility import xl_rowcol_to_cell
 ##################################### IMPORTING ################################
 #################################### CONSULTA DB ###############################
-import consulta
-pre = consulta.consulta_db()
+
+totales,dic_sigla_nom = consulta.consulta_db()
+
+
+pre = totales.loc[totales.propuesta != 'Sin Propuesta']
 
 pre['cant'] = [i+1 for i in range(len(pre))]
 
+dic_nom_sigla = {pre.propuesta.iloc[i]: pre.sigla.iloc[i] for i in range(len(pre))}
+dic_nom_sigla.update({'Total Institución': ''})
 
 #################################### CONSULTA DB ###############################
 ################################### TABLAS DATOS ###############################
-propuestas_lst = list(pre.carrera.unique())
+propuestas_lst = list(pre.propuesta.unique())
 propuestas_lst.sort()
 
 
-siglas = pd.read_csv('assets/siglas.csv', sep='|', header=None)
-siglas[2] = [siglas[0].iloc[i].split(' ')[0] for i in range(len(siglas))]
+dic_sigla_nom.update({'Total Institución': ''})
+siglas = pd.DataFrame([dic_sigla_nom.keys(),dic_sigla_nom.values()]).T
 
-siglas = siglas.loc[siglas[0].isin(propuestas_lst)]
-siglas = siglas.sort_values(by=0)
-siglas.reset_index(inplace=True,drop=True)
+siglas.columns = ['sigla','propuesta']
+siglas = siglas.loc[siglas.sigla.isin(dic_nom_sigla.values())]
+siglas['nivel'] = [siglas.propuesta.iloc[i].split(' ')[0] for i in range(len(siglas))]
 
-siglas_dic = {siglas[0].iloc[i]:siglas[1].iloc[i] for i in range(len(siglas))}
-siglas_dic.update({'Total Institución': ''})
 
 niveles = ['Total Institución','Curso', 'Doctorado', 'Diplomatura', 'Especialización', 'Maestría']
 
@@ -46,39 +54,46 @@ niveles = ['Total Institución','Curso', 'Doctorado', 'Diplomatura', 'Especializ
 all_options = {}
 
 for niv in niveles:
-    cont = list(siglas.loc[siglas[2] == niv][0].unique())
+    cont = list(siglas.loc[siglas['nivel'] == niv]['propuesta'].unique())
     all_options.update({niv:cont})
+
 
 
 ################################### RAW PYTHON ###############################
 
 trace_totales = go.Scatter()
-trace_sexo = go.Bar()
+trace_estado = go.Bar()
 
-data_sexo_dic = dict(pre['sexo'].value_counts())
+data_estado_dic = dict(totales['estado'].value_counts())
 
-labels = ['Femenino','Masculino','No informa']
+labels = ['Pendiente','Activado','Listo','Inscripto']
 values = []
 
 for i in labels:
-    try:         value = data_sexo_dic[i]
+    try:         value = data_estado_dic[i]
     except:      value = 0
     values.append(value)
 
 tabla_a = pre.copy()
-dic_columns = {'fecha': 'Fecha',
+
+dic_columns = {'fecha_preinscripcion': 'Fecha',
                'nivel': 'Nivel',
-               'carrera': 'Carrera',
+               'propuesta': 'Carrera',
                'ape': 'Apellido/s',
                'nom': 'Nombre/s',
-               'nac': 'Nacionalidad',
+               'nacionalidad': 'Nacionalidad',
                'edad': 'Edad',
-               'tipo_doc': 'Tipo Documento',
                'nro_doc': 'Nro. Documento',
                'sexo': 'Sexo',
                'celular': 'Nro. Celular',
                'e_mail': 'e-Mail',
                'cant': 'Cantidad',
+               'estado':'Estado',
+               'Pendiente':'Pendientes',
+               'Activado':'Activados',
+               'Potencial':'Potenciales',
+               'Inscripto':'Inscriptos',
+               'Totales':'Totales'
                }
 ################################### RAW PYTHON ###############################
 ################################## APP SETTING ###############################
@@ -105,10 +120,25 @@ def generate_table(dataframe, max_rows=100):
 ################################## APP LAYOUT ################################
 input_value = 'Total Institución'
 
+import assets.entry_text as welcome
+
+
 app.layout = html.Div([
     html.Div([
-        html.H2('Preinscripciones de Posgrados', className='eight columns'),
-        html.Img(src='/assets/untref.jpg', className='four columns'),
+        html.H2('Preinscripciones de Posgrado', className='eight columns'),
+        html.Img(src='/assets/untref_logo.jpg', className='four columns'),
+        #html.Div(className='logo'),
+
+        html.Div([\
+            html.P(welcome.welcome.split('#')[i], className='texto_intro') for i in range(len(welcome.welcome.split('#')))\
+        ], className='eigth columns'),
+
+        html.Div([ \
+            html.P(welcome.welcome_tags.split('#')[i], className='texto_intro') for i in
+            range(len(welcome.welcome_tags.split('#'))) \
+            ], className='eight columns'),
+
+
     ], className='row'),
     html.Hr(className='linea'),
 
@@ -152,14 +182,14 @@ app.layout = html.Div([
             dcc.Graph(
                 id='graph_fechas',
             ),
-        ],className="eight columns"),
+        ],className="seven columns"),
 
     # SEXO
         html.Div([
             dcc.Graph(
                 id='graph_sexo',
             ),
-        ],className="four columns"),
+        ],className="five columns"),
     ],className="row"),
 
     # BOTON DE DESCARGA
@@ -171,6 +201,20 @@ app.layout = html.Div([
         target="_blank",
     ),html.P('(formato CSV)',className='span'),
 
+    # DROPDOWN CARRERAS X NIVEL
+    html.Div([
+        html.Label('Seleccione un nivel:', className='row'),
+        dcc.Dropdown(options=[dict({'label': niveles[i], 'value': niveles[i]})
+                              for i in range(len(niveles))],
+                     id='nivel_elegido_home',
+                     value='',
+                     clearable=False,
+                     disabled=True,
+
+                     ),
+
+    ],id='selector_nivel',hidden=True, className='row'),
+
     # TABLA DE DATOS
     dash_table.DataTable(
         id='tabla-datos',
@@ -178,8 +222,6 @@ app.layout = html.Div([
     ),
 
 ],className='cuerpo')
-
-
 
 ################################## APP LAYOUT ###################################
 ################################## CALL BACKS ###################################
@@ -209,63 +251,88 @@ def set_carreras(available_options):
              ],
             [dash.dependencies.Input('carrera_elegida', 'value')])
 
-def update_datos(input_value):
 
+
+def update_datos(input_value):
     # PARA LA PANTALLA INICIAL
     if input_value == 'Total Institución':
         vista = pre.copy()
-        layout_a = {'title': 'Inscripciones Totales'}
-        tabla = pre[['nivel','carrera']].copy()
-        tabla['cant'] = 1
-        tabla = tabla.groupby('carrera').sum()
+        layout_a = {'title': 'Preinscripciones Totales'}
+
+        # TABLA
+        tabla = totales[['nivel','propuesta','estado']].copy()
+
+        tabla = pd.concat([tabla.drop('estado', axis=1), pd.get_dummies(tabla.estado)], axis=1)
+        tabla = tabla.groupby(['nivel', 'propuesta']).sum()
         tabla.reset_index(inplace=True)
 
-        vista_b = pre.copy
-        data_sexo_dic = dict(pre['sexo'].value_counts())
-        layout_b = {'title': 'Inscripciones Totales por sexo'}
+        tabla['Totales'] = tabla.sum(axis=1)
+        tabla = tabla.loc[tabla.nivel != 'Sin Propuesta']
+        tabla = tabla.sort_values(by='Totales', ascending=False)
+        tabla = tabla[['nivel', 'propuesta', 'Activado', 'Potencial', 'Inscripto', 'Totales']]
 
-    # PARA CADA CARRERA
+        vista_b = pre.copy()
+        data_estado_dic = dict(totales['estado'].value_counts())
+        layout_b = {'title': 'Inscripciones Totales por estado'}
+
+        estado_labels = ['Pendiente', 'Activado', 'Potencial', 'Inscripto']
+
+    # PARA PANTALLA de CADA CARRERA
     else:
-        vista = pre.loc[pre.carrera == input_value][['fecha','cant']].copy()
+        vista = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','estado','cant']].copy()
         vista['cant'] = range(1,len(vista)+1)
-        tabla = pre.loc[pre.carrera == input_value][['fecha','ape','nom','nac','edad','tipo_doc','nro_doc','sexo']].copy() # agregar 'celular','e_mail' en produccion
+        tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad','nro_doc','sexo','estado']].copy() # agregar 'celular','e_mail' en produccion
 
         layout_a = {'title': 'Detalle por fecha'}
 
-        vista_b = pre.loc[pre.carrera == input_value][['sexo']].copy()
-        data_sexo_dic = dict(vista_b['sexo'].value_counts())
-        layout_b = {'title': 'Detalle por sexo'}
+        vista_b = pre.loc[pre.propuesta == input_value][['estado']].copy()
+        data_estado_dic = dict(vista_b['estado'].value_counts())
+        layout_b = {'title': 'Detalle por estado'}
+
+        estado_labels = ['Activado', 'Potencial', 'Inscripto']
 
     # GRAFICO DE FECHAS
     data_fechas_lst = []
-    trace_fechas = go.Scatter(x=list(vista.fecha),
+    trace_fechas = go.Scatter(x=list(vista.loc[vista.estado.isin(['Potencial','Inscripto'])].fecha_preinscripcion),
                               y=list(vista.cant),
-                              name='fechas',
+                              name='Totales Posibles',
+                              line=dict(color='#aaaaaa'),
+                              )
+    trace_fechas_2 = go.Scatter(x=list(vista.loc[vista.estado == 'Inscripto'].fecha_preinscripcion),
+                              y=list(vista.cant),
+                              name='Inscriptos Actuales',
                               line=dict(color='#f44242'),
                               )
+    trace_fechas_3 = go.Scatter(x=list(vista.loc[vista.estado == 'Potencial'].fecha_preinscripcion),
+                              y=list(vista.cant),
+                              name='Potenciales',
+                              line=dict(color='#044242'),
+                              )
     data_fechas_lst.append(trace_fechas)
+    data_fechas_lst.append(trace_fechas_2)
+    data_fechas_lst.append(trace_fechas_3)
 
-    # GRAFICO DE SEXOS
-    sex_labels = ['Femenino', 'Masculino', 'No informa']
-    sex_values = []
-    for i in sex_labels:
+    # GRAFICO DE ESTADOS
+
+    estado_values = []
+    for i in estado_labels:
         try:
-            value = data_sexo_dic[i]
+            value = data_estado_dic[i]
         except:
             value = 0
-        sex_values.append(value)
+        estado_values.append(value)
 
-    data_sexo_lst = []
-    trace_sexo = go.Bar(x=sex_labels,
-                        y=sex_values,
+    data_estado_lst = []
+    trace_estado = go.Bar(x=estado_labels,
+                        y=estado_values,
                         name='sexos',
-                        text=sex_values,
+                        text=estado_values,
                         textposition='auto',
                         )
-    data_sexo_lst.append(trace_sexo)
+    data_estado_lst.append(trace_estado)
 
     try:
-        tabla.fecha = pd.DatetimeIndex(tabla.fecha).strftime("%d/%m/%Y")
+        tabla.fecha_preinscripcion = pd.DatetimeIndex(tabla.fecha_preinscripcion).strftime("%d/%m/%Y")
     except:
         pass
 
@@ -275,13 +342,13 @@ def update_datos(input_value):
 
     if input_value == 'Total Institución':
         return [input_value,
-                siglas_dic[input_value],
+                dic_nom_sigla[input_value],
                 {
                 'data':data_fechas_lst,
                 'layout':layout_a,
                 },
                 {
-                'data': data_sexo_lst,
+                'data': data_estado_lst,
                 'layout': layout_b,
                 },
                 tabla.to_dict('records'),
@@ -290,19 +357,21 @@ def update_datos(input_value):
                 ]
     else:
         return [input_value,
-                'Sigla: ' + siglas_dic[input_value],
+                'Sigla: ' + dic_nom_sigla[input_value],
                 {
                     'data': data_fechas_lst,
                     'layout': layout_a,
                 },
                 {
-                    'data': data_sexo_lst,
+                    'data': data_estado_lst,
                     'layout': layout_b,
                 },
                 tabla.to_dict('records'),
                 [{"name": dic_columns[i], "id": i} for i in tabla.columns],
                 csv_string
                 ]
+
+
 
 
 ################################### APP LOOP ####################################
