@@ -1,31 +1,14 @@
 ##################################### IMPORTING ################################
 # -*- coding: utf-8 -*-
-import numpy as np ; import pandas as pd
-import assets.consulta as consulta
-import time ; import datetime ; from datetime import date
-import plotly.graph_objs as go
-import io
-
-import base64
-import flask
-from flask import send_file
-
+import pandas as pd ; import assets.consulta as consulta ; import plotly.graph_objs as go
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
-import dash_table
-from dash.dependencies import Output, Input
-
-import urllib
-import urllib.parse
-import openpyxl
-
-from xlsxwriter.utility import xl_rowcol_to_cell
+import dash_core_components as dcc ; import dash_html_components as html
+import dash_table ; from dash.dependencies import Output, Input
+import urllib ; import urllib.parse
 ##################################### IMPORTING ################################
 #################################### CONSULTA DB ###############################
 
 totales,dic_sigla_nom = consulta.consulta_db()
-
 
 pre = totales.loc[totales.propuesta != 'Sin Propuesta']
 
@@ -66,7 +49,7 @@ trace_estado = go.Bar()
 
 data_estado_dic = dict(totales['estado'].value_counts())
 
-labels = ['Pendiente','Activado','Listo','Inscripto']
+labels = ['Pendiente','Activo','Potencial','Inscripto']
 values = []
 
 for i in labels:
@@ -90,7 +73,7 @@ dic_columns = {'fecha_preinscripcion': 'Fecha',
                'cant': 'Cantidad',
                'estado':'Estado',
                'Pendiente':'Pendientes',
-               'Activado':'Activados',
+               'Activo':'Activos',
                'Potencial':'Potenciales',
                'Inscripto':'Inscriptos',
                'Totales':'Totales'
@@ -131,13 +114,12 @@ app.layout = html.Div([
 
         html.Div([\
             html.P(welcome.welcome.split('#')[i], className='texto_intro') for i in range(len(welcome.welcome.split('#')))\
-        ], className='eigth columns'),
+        ], className='ten columns'),
 
         html.Div([ \
             html.P(welcome.welcome_tags.split('#')[i], className='texto_intro') for i in
             range(len(welcome.welcome_tags.split('#'))) \
             ], className='eight columns'),
-
 
     ], className='row'),
     html.Hr(className='linea'),
@@ -176,7 +158,7 @@ app.layout = html.Div([
                 ),
     ], className='row'),
 
-    # GRAFICOS
+    # SCATTER PLOT
     html.Div([
         html.Div([
             dcc.Graph(
@@ -184,7 +166,7 @@ app.layout = html.Div([
             ),
         ],className="seven columns"),
 
-    # SEXO
+    # GRAFICO DE BARRAS
         html.Div([
             dcc.Graph(
                 id='graph_sexo',
@@ -210,7 +192,6 @@ app.layout = html.Div([
                      value='',
                      clearable=False,
                      disabled=True,
-
                      ),
 
     ],id='selector_nivel',hidden=True, className='row'),
@@ -269,19 +250,19 @@ def update_datos(input_value):
         tabla['Totales'] = tabla.sum(axis=1)
         tabla = tabla.loc[tabla.nivel != 'Sin Propuesta']
         tabla = tabla.sort_values(by='Totales', ascending=False)
-        tabla = tabla[['nivel', 'propuesta', 'Activado', 'Potencial', 'Inscripto', 'Totales']]
+        tabla = tabla[['nivel', 'propuesta', 'Activo', 'Potencial', 'Inscripto', 'Totales']]
 
         vista_b = pre.copy()
         data_estado_dic = dict(totales['estado'].value_counts())
         layout_b = {'title': 'Inscripciones Totales por estado'}
 
-        estado_labels = ['Pendiente', 'Activado', 'Potencial', 'Inscripto']
+        estado_labels = ['Pendiente', 'Activo', 'Potencial', 'Inscripto']
 
     # PARA PANTALLA de CADA CARRERA
     else:
         vista = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','estado','cant']].copy()
         vista['cant'] = range(1,len(vista)+1)
-        tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad','nro_doc','sexo','estado']].copy() # agregar 'celular','e_mail' en produccion
+        tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad','nro_doc','sexo','celular','e_mail','estado']].copy() # agregar 'celular','e_mail' en produccion
 
         layout_a = {'title': 'Detalle por fecha'}
 
@@ -289,28 +270,29 @@ def update_datos(input_value):
         data_estado_dic = dict(vista_b['estado'].value_counts())
         layout_b = {'title': 'Detalle por estado'}
 
-        estado_labels = ['Activado', 'Potencial', 'Inscripto']
+        estado_labels = ['Activo', 'Potencial', 'Inscripto']
 
     # GRAFICO DE FECHAS
+    colors = {'tot_pos' : '#bbbbbb',
+              'poten' : '#000e75',
+              'insc' : '#008a5a',
+              'pend' : '#8f2806',
+              'act' : '#06848f'}
+
     data_fechas_lst = []
     trace_fechas = go.Scatter(x=list(vista.loc[vista.estado.isin(['Potencial','Inscripto'])].fecha_preinscripcion),
-                              y=list(vista.cant),
-                              name='Totales Posibles',
-                              line=dict(color='#aaaaaa'),
-                              )
-    trace_fechas_2 = go.Scatter(x=list(vista.loc[vista.estado == 'Inscripto'].fecha_preinscripcion),
-                              y=list(vista.cant),
-                              name='Inscriptos Actuales',
-                              line=dict(color='#f44242'),
+                              y=list(vista.cant), name='Totales Posibles', line=dict(color=colors['tot_pos']),
                               )
     trace_fechas_3 = go.Scatter(x=list(vista.loc[vista.estado == 'Potencial'].fecha_preinscripcion),
-                              y=list(vista.cant),
-                              name='Potenciales',
-                              line=dict(color='#044242'),
+                              y=list(vista.cant), name='Potenciales', line=dict(color=colors['poten']),
                               )
+    trace_fechas_2 = go.Scatter(x=list(vista.loc[vista.estado == 'Inscripto'].fecha_preinscripcion),
+                              y=list(vista.cant), name='Inscriptos Actuales', line=dict(color=colors['insc']),
+                              )
+
     data_fechas_lst.append(trace_fechas)
-    data_fechas_lst.append(trace_fechas_2)
     data_fechas_lst.append(trace_fechas_3)
+    data_fechas_lst.append(trace_fechas_2)
 
     # GRAFICO DE ESTADOS
 
@@ -323,11 +305,13 @@ def update_datos(input_value):
         estado_values.append(value)
 
     data_estado_lst = []
+
     trace_estado = go.Bar(x=estado_labels,
-                        y=estado_values,
-                        name='sexos',
-                        text=estado_values,
-                        textposition='auto',
+                          y=estado_values,
+                          name='sexos',
+                          text=estado_values,
+                          textposition='auto',
+                          marker_color = [colors['pend'],colors['act'],colors['poten'],colors['insc']]
                         )
     data_estado_lst.append(trace_estado)
 
