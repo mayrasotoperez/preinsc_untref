@@ -262,7 +262,7 @@ def update_datos(input_value):
     else:
         vista = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','estado','cant']].copy()
         vista['cant'] = range(1,len(vista)+1)
-        tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad','nro_doc','sexo','celular','e_mail','estado']].copy() # agregar 'celular','e_mail' en produccion
+        tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad','nro_doc','sexo','estado']].copy() # agregar 'celular','e_mail' en produccion
 
         layout_a = {'title': 'Detalle por fecha'}
 
