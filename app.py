@@ -10,18 +10,18 @@ import urllib ; import urllib.parse
 
 totales,dic_sigla_nom = consulta.consulta_db()
 
+totales.fecha_insc.fillna(0,inplace=True)
+
 pre = totales.loc[totales.propuesta != 'Sin Propuesta']
-
 pre['cant'] = [i+1 for i in range(len(pre))]
-
 dic_nom_sigla = {pre.propuesta.iloc[i]: pre.sigla.iloc[i] for i in range(len(pre))}
 dic_nom_sigla.update({'Total Institución': ''})
+
 
 #################################### CONSULTA DB ###############################
 ################################### TABLAS DATOS ###############################
 propuestas_lst = list(pre.propuesta.unique())
 propuestas_lst.sort()
-
 
 dic_sigla_nom.update({'Total Institución': ''})
 siglas = pd.DataFrame([dic_sigla_nom.keys(),dic_sigla_nom.values()]).T
@@ -193,15 +193,21 @@ app.layout = html.Div([
                      clearable=False,
                      disabled=True,
                      ),
-
     ],id='selector_nivel',hidden=True, className='row'),
 
     # TABLA DE DATOS
     dash_table.DataTable(
         id='tabla-datos',
-
+        sort_action='native',
+        style_data_conditional=[
+                {
+                    'if': {
+                        'filter_query': '{estado} = Inscripto',
+                    },
+                    'backgroundColor': '#008a5a',
+                    'color': 'white'
+                },]
     ),
-
 ],className='cuerpo')
 
 ################################## APP LAYOUT ###################################
@@ -260,7 +266,7 @@ def update_datos(input_value):
 
     # PARA PANTALLA de CADA CARRERA
     else:
-        vista = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','estado','cant']].copy()
+        vista = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','estado','cant','fecha_insc']].copy()
         vista['cant'] = range(1,len(vista)+1)
         tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad','nro_doc','sexo','estado']].copy() # agregar 'celular','e_mail' en produccion
 
@@ -279,6 +285,7 @@ def update_datos(input_value):
               'pend' : '#8f2806',
               'act' : '#06848f'}
 
+
     data_fechas_lst = []
     trace_fechas = go.Scatter(x=list(vista.loc[vista.estado.isin(['Potencial','Inscripto'])].fecha_preinscripcion),
                               y=list(vista.cant), name='Totales Posibles', line=dict(color=colors['tot_pos']),
@@ -286,7 +293,7 @@ def update_datos(input_value):
     trace_fechas_3 = go.Scatter(x=list(vista.loc[vista.estado == 'Potencial'].fecha_preinscripcion),
                               y=list(vista.cant), name='Potenciales', line=dict(color=colors['poten']),
                               )
-    trace_fechas_2 = go.Scatter(x=list(vista.loc[vista.estado == 'Inscripto'].fecha_preinscripcion),
+    trace_fechas_2 = go.Scatter(x=list(vista.loc[vista.estado == 'Inscripto'].fecha_insc.sort_values()),
                               y=list(vista.cant), name='Inscriptos Actuales', line=dict(color=colors['insc']),
                               )
 
@@ -306,13 +313,16 @@ def update_datos(input_value):
 
     data_estado_lst = []
 
-    trace_estado = go.Bar(x=estado_labels,
-                          y=estado_values,
-                          name='sexos',
-                          text=estado_values,
-                          textposition='auto',
-                          marker_color = [colors['pend'],colors['act'],colors['poten'],colors['insc']]
-                        )
+
+    if input_value == 'Total Institución':
+        trace_estado = go.Bar(x=estado_labels, y=estado_values, name='sexos',
+                              text=estado_values, textposition='auto',
+                              marker_color = [colors['pend'],colors['act'],colors['poten'],colors['insc']] )
+    else:
+        trace_estado = go.Bar(x=estado_labels, y=estado_values, name='sexos',
+                              text=estado_values, textposition='auto',
+                              marker_color = [colors['act'],colors['poten'],colors['insc']] )
+
     data_estado_lst.append(trace_estado)
 
     try:

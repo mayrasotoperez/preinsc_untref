@@ -33,7 +33,6 @@ def get_table(esquema, tabla_objetivo, columns):
 
 # DataBase: Preinscripcion
 
-
 def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
     global data_db
     # nos conectamos a la base
@@ -51,26 +50,23 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
     esquema = 'public'
     tabla_objetivo = 'sga_preinscripcion'
     columns = list(tablas.loc[tablas['tabla_name'] == tabla_objetivo]['campo'].unique())
-
     get_table(esquema, tabla_objetivo, columns)
+
+    # P : Pendiente de activacion
+    # A : Activado. La persona respondió el mail enviado
+    # C : Preparado para proceso masivo de inscripción.
+    # I : Inscripto al Guarani
+
     users = output_df[['id_preinscripcion',
                        'tipo_documento', 'nro_documento', 'apellido', 'nombres',
                        'fecha_nacimiento', 'sexo', 'nacionalidad',
                        #                   'alu_otestsup_uni', 'alu_otestsup_carr',
                        'celular_numero', 'e_mail',
-                       'version_modificacion', 'version_impresa', 'estado']].copy()
+                       'version_modificacion', 'version_impresa']].copy()
 
     users.columns = ['id_preinscripcion', 'tipo_doc', 'nro_doc', 'ape', 'nom', 'fecha_nac', 'sexo', 'nacion',
                      #                 'uni_previa', 'carr_previa',
-                     'celular', 'e_mail', 'ver_act', 'ver_imp', 'estado']
-
-    # print('''P : Pendiente de activacion
-    # A : Activado. La persona respondió el mail enviado
-    # C : Preparado para proceso masivo de inscripción.
-    # I : Inscripto al Guarani''')
-
-    estados_dic = {'P': 'Pendiente', 'A': 'Activo', 'C': 'Potencial', 'I': 'Inscripto'}
-    users['estado'] = users.estado.map(estados_dic)
+                     'celular', 'e_mail', 'ver_act', 'ver_imp']
 
     # public.sga_preinscripcion_propuestas
 
@@ -79,7 +75,11 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
     columns = list(tablas.loc[tablas['tabla_name'] == tabla_objetivo]['campo'].unique())
 
     get_table(esquema, tabla_objetivo, columns)
-    users_prop = output_df[['id_preinscripcion', 'propuesta', 'fecha_preinscripcion']].copy()
+
+    users_prop = output_df[['id_preinscripcion', 'propuesta', 'fecha_preinscripcion', 'estado']].copy()
+
+    estados_dic = {'P': 'Pendiente', 'A': 'Activo', 'C': 'Potencial', 'I': 'Inscripto'}
+    users_prop['estado'] = users_prop.estado.map(estados_dic)
 
     # DataBase: Gestion
     data_db = 'guarani3162posgrado'
@@ -107,20 +107,51 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
     dic_sigla_nom = {sga_propuestas.nombre_abreviado.iloc[i]: sga_propuestas.nombre.iloc[i] for i in
                      range(len(sga_propuestas))}
 
+    users_prop['propuesta_id'] = users_prop.propuesta.copy()
     users_prop['propuesta'] = users_prop.propuesta.map(dic_id_sigla)
 
-    # merge
+    # negocio.sga_propuestas_aspira
 
+    # seleccionamos el esquema y la tabla
+    esquema = 'negocio'
+    tabla_objetivo = 'sga_propuestas_aspira'
+    columns = list(tablas.loc[tablas['tabla_name'] == tabla_objetivo]['campo'].unique())
+
+    get_table(esquema, tabla_objetivo, columns)
+
+    aspira = output_df[['persona', 'periodo_insc', 'anio_academico', 'propuesta', 'fecha_inscripcion', 'situacion_asp',
+                        'fecha_alta']].copy()
+
+    # negocio.mdp_personas
+
+    # seleccionamos el esquema y la tabla
+    esquema = 'negocio'
+    tabla_objetivo = 'mdp_personas'
+    columns = list(tablas.loc[tablas['tabla_name'] == tabla_objetivo]['campo'].unique())
+
+    get_table(esquema, tabla_objetivo, columns)
+
+    personas = output_df[['persona', 'usuario', 'apellido']].copy()
+    personas.dropna(inplace=True)
+    personas.reset_index(inplace=True, drop=True)
+
+    dic_personas = {personas.persona.iloc[i]: personas.usuario.iloc[i] for i in range(len(personas))}
+
+    aspira['DNI'] = aspira.persona.map(dic_personas)
+
+    dic_fechas_insc = {str(aspira.DNI.iloc[i]) + '_' + str(aspira.propuesta.iloc[i]): aspira.fecha_alta.iloc[i] for i in
+                       range(len(aspira))}
+
+    # MERGE
     totales = pd.merge(users, users_prop, on='id_preinscripcion', how='outer')
-
     totales['unique'] = [str(totales.id_preinscripcion.iloc[i]) + '_' + str(totales.propuesta.iloc[i]) for i in
                          range(len(totales))]
-
     totales.drop_duplicates(subset='unique', inplace=True)
     totales.reset_index(drop=True, inplace=True)
 
-    # MAPPING DATA
+    totales.loc[totales.estado.isna(), 'estado'] = 'Activo'
 
+    # MAPPING DATA
     # DOCUMENTO TIPO
     doc_tipo = {0: 'DNI', 1: 'DNT', 2: 'CI', 3: 'CUIL', 18: 'LE', 19: 'LC', 20: 'CM', 21: 'CD', 22: 'CC', 23: 'CDI',
                 90: 'PAS'}
@@ -152,14 +183,6 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
         totales.propuesta.iloc[i].split(' ')[0] if type(totales.propuesta.iloc[i]) == str else 'Sin Propuesta' for i in
         range(len(totales))]
 
-    # ACOMODAMOS ETIQUETAS
-    # hay listos que no tienen carrera elegida, los degradamos a pendientes
-    totales.loc[(totales.sigla.isna()) & (totales.estado == 'Potencial'), 'estado'] = 'Pendiente'
-    # todos los que no han elegido carrera los degradamos, buena lista para difusion
-    totales.loc[(totales.sigla.isna()) & (totales.estado == 'Activo'), 'estado'] = 'Pendiente'
-    # todos los que hayan elegido carrera pasan a Activo
-    totales.loc[~(totales.sigla.isna()) & (totales.estado == 'Pendiente'), 'estado'] = 'Activo'
-
     totales['propuesta'] = totales.propuesta.fillna('Sin Propuesta')
     totales['sigla'] = totales.sigla.fillna('Sin Propuesta')
     totales['version'] = [
@@ -167,10 +190,35 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
             i] else 'Anterior' for i in range(len(totales))]
     totales = totales.sort_values(by='fecha_preinscripcion')
 
+    # FECHA DE INSCRIPCION (solo para inscriptos)
+
+    totales.propuesta_id.fillna(0, inplace=True)
+    totales.propuesta_id = totales.propuesta_id.astype(int)
+
+    totales['dni_prop'] = [str(totales.nro_doc.iloc[i]) + '_' + str(totales.propuesta_id.iloc[i]) for i in
+                           range(len(totales))]
+
+    totales['fecha_insc'] = np.nan
+    totales.reset_index(inplace=True, drop=True)
+
+    for i in range(len(totales)):
+        if totales.estado.iloc[i] == 'Inscripto':
+            totales.fecha_insc.iloc[i] = dic_fechas_insc[totales.dni_prop.iloc[i]]
+        else:
+            pass
+
+    totales.fecha_insc.fillna(0, inplace=True)
+
+    totales.loc[totales.propuesta == 'Sin Propuesta', 'estado'] = 'Pendiente'
+    totales.loc[(totales.propuesta != 'Sin Propuesta') & (totales.version != 'Correcta'), 'estado'] = 'Activo'
+    totales.loc[(totales.propuesta != 'Sin Propuesta') & (totales.version == 'Correcta'), 'estado'] = 'Potencial'
+    totales.loc[(totales.propuesta != 'Sin Propuesta') & (totales.version == 'Correcta') & (
+                totales.fecha_insc != 0), 'estado'] = 'Inscripto'
+
     # ACOMODAMOS LAS FEATURES
     totales = totales[['id_preinscripcion', 'estado', 'nivel', 'sigla', 'propuesta', 'version',
                        'fecha_preinscripcion', 'unique',
                        'tipo_doc', 'nro_doc', 'ape', 'nom', 'fecha_nac', 'edad', 'nacionalidad',
-                       'sexo', 'celular', 'e_mail']]
+                       'sexo', 'celular', 'e_mail', 'fecha_insc']]
 
     return totales, dic_sigla_nom
