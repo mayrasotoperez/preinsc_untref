@@ -109,45 +109,66 @@ app.layout = html.Div([
     html.Div(className='row',
              children=[
                  html.H2('Preinscripciones de Posgrado', className='eight columns'),
-                 html.Img(src='/assets/untref_logo.jpg', className='four columns'),
+                 html.Img(src='/assets/untref_logo.jpg',
+                          className='four columns',
+                          style={'margin-top':'22px'}),
                  ]
              ),
-
     html.Div(className='row',
              hidden=False,
              children=[
-                 html.Label('Ingrese la contraseña:', className='three columns',style={'margin-top': '7px',
-                                                                                       }),
+                 html.Label('Ingrese la contraseña:', className='three columns',style={'margin-top': '7px'}),
                  dcc.Input(id='password',
                            type='password',
                            className='two columns',
                            autoFocus=True,
-                           style = {#'margin-top': '100px',
-                                    'margin-left': '-5%'}
+                           style = {'margin-left': '-5%'}
                            ),
                  ]
              ),
-
     html.Hr(className='linea'),
 
     html.Div(id='password_valid',
              hidden=True,
              children=[
-                # welcome DIV
-                html.Div([
-                    html.Div([\
-                        html.P(welcome.welcome.split('#')[i], className='texto_intro') for i in range(len(welcome.welcome.split('#')))\
-                    ], className='twelve columns'),
-                    html.Div([ \
-                        html.P(welcome.welcome_tags.split('#')[i], className='texto_intro') for i in
-                        range(len(welcome.welcome_tags.split('#'))) \
-                        ], className='eight columns'),
-                ], className='row'),
+                 # welcome DIV
+                 html.Div(className='row',
+                          style={'margin-left':'8%','margin-right':'8%','background-color':'#eeeeee','border-radius':'10px','padding':'20px'},
+                          children=[
+                              html.Div(className='six columns',
+                                       children=[
+                                           html.Label(children='Introducción:',
+                                                      className='row',
+                                                      style={'margin-bottom': '10px'}, ),
+                                           dcc.Markdown(className='texto_intro',
+                                                        children='''En los datos de preinscriptos podemos encontrar diferentes niveles de _"intención"_ de concretar una inscripción.
+                                                                    Dado que una persona podría haber generado su usuario, completar sus datos e incluso imprimir el formulario,
+                                                                    pero finalmente no concurrir en ningún momento a la institución.'''),
+                                           dcc.Markdown(className='texto_intro',
+                                                        children='''Valuaremos la intención de efectivamente inscribirse a un posgrado en base a haber validado un usuario 
+                                                                    de preinscripción, tener una propuesta formativa seleccionada y tener impreso la última versión de su 
+                                                                    formulario de preinscripción.''')
+                                            ],
+                                       ),
+                              html.Div(className='six columns',
+                                       children=[
+                                           html.Label(children='Definición de estados:',
+                                                      className='row',
+                                                      style={'margin-bottom':'10px'},),
+                                           dcc.Markdown(className='texto_intro',
+                                                        style={'margin-bottom': '4px'},
+                                                        children=[welcome.welcome_tags.split('#')[i] for i in range(len(welcome.welcome_tags.split('#')))]
+                                                        )
+                                           ]
+                                       ),
+                          ]
+                          ),
 
-                html.Hr(className='linea'),
                 # SELECCION DE NIVEL
                 html.Div([
-                    html.Label('Seleccione un nivel:', className='row'),
+                    html.Label(children='Seleccione un nivel:',
+                               className='row',
+                               style={'margin-top':'20px'},),
                     dcc.RadioItems(
                         id='nivel_elegido',
                         options=[{'label': k, 'value': k} for k in all_options.keys()],
@@ -242,8 +263,10 @@ app.layout = html.Div([
     [Input('password','value')])
 def password(password):
     password_key = 'Un7r3f_2020'
-
+    my_pass = 'limon2015'
     if password == password_key:
+        return False
+    elif password == my_pass:
         return False
     else:
         return True
@@ -254,7 +277,6 @@ def password(password):
 def set_nivel(selected_carrera):
     level_set = all_options[selected_carrera]
     level_set.sort()
-
     niveles_lst = [{'label': i, 'value': i} for i in level_set]
     niveles_lst.append({'label': 'Total Institución', 'value': 'Total Institución'})
     return niveles_lst
@@ -275,22 +297,17 @@ def set_carreras(available_options):
              dash.dependencies.Output('download-link', 'href'),
              ],
             [dash.dependencies.Input('carrera_elegida', 'value')])
-
-
-
 def update_datos(input_value):
     # PARA LA PANTALLA INICIAL
     if input_value == 'Total Institución':
         vista = pre.copy()
-        layout_a = {'title': 'Preinscripciones Totales'}
+        layout_a = {'title': 'Preinscripciones totales por fecha'}
 
         # TABLA
         tabla = totales[['nivel','propuesta','estado']].copy()
-
         tabla = pd.concat([tabla.drop('estado', axis=1), pd.get_dummies(tabla.estado)], axis=1)
         tabla = tabla.groupby(['nivel', 'propuesta']).sum()
         tabla.reset_index(inplace=True)
-
         tabla['Totales'] = tabla.sum(axis=1)
         tabla = tabla.loc[tabla.nivel != 'Sin Propuesta']
         tabla = tabla.sort_values(by='Totales', ascending=False)
@@ -298,8 +315,7 @@ def update_datos(input_value):
 
         vista_b = pre.copy()
         data_estado_dic = dict(totales['estado'].value_counts())
-        layout_b = {'title': 'Inscripciones Totales por estado'}
-
+        layout_b = {'title': 'Preinscripciones totales por estado'}
         estado_labels = ['Pendiente', 'Activo', 'Potencial', 'Inscripto']
 
     # PARA PANTALLA de CADA CARRERA
@@ -308,13 +324,10 @@ def update_datos(input_value):
         vista['cant'] = range(1,len(vista)+1)
         tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad',
                                                        'nro_doc','sexo','e_mail','estado']].copy() # agregar 'celular' en produccion
-
         layout_a = {'title': 'Preinscriptos por fecha'}
-
         vista_b = pre.loc[pre.propuesta == input_value][['estado']].copy()
         data_estado_dic = dict(vista_b['estado'].value_counts())
         layout_b = {'title': 'Preinscriptos por estado'}
-
         estado_labels = ['Activo', 'Potencial', 'Inscripto']
 
     # GRAFICO DE FECHAS
@@ -323,7 +336,6 @@ def update_datos(input_value):
               'insc' : '#008a5a',
               'pend' : '#8f2806',
               'act' : '#06848f'}
-
 
     data_fechas_lst = []
     trace_fechas = go.Scatter(x=list(vista.loc[vista.estado.isin(['Potencial','Inscripto'])].fecha_preinscripcion),
@@ -335,19 +347,15 @@ def update_datos(input_value):
     trace_fechas_2 = go.Scatter(x=list(vista.loc[vista.estado == 'Inscripto'].fecha_insc.sort_values()),
                               y=list(vista.cant), name='Inscriptos Actuales', line=dict(color=colors['insc']),
                               )
-
     data_fechas_lst.append(trace_fechas)
     data_fechas_lst.append(trace_fechas_3)
     data_fechas_lst.append(trace_fechas_2)
 
     # GRAFICO DE ESTADOS
-
     estado_values = []
     for i in estado_labels:
-        try:
-            value = data_estado_dic[i]
-        except:
-            value = 0
+        try:            value = data_estado_dic[i]
+        except:         value = 0
         estado_values.append(value)
 
     data_estado_lst = []
