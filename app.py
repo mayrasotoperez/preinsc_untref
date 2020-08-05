@@ -102,116 +102,151 @@ def generate_table(dataframe, max_rows=100):
     ])
 ################################## APP LAYOUT ################################
 input_value = 'Total Institución'
-
 import assets.entry_text as welcome
 
-
 app.layout = html.Div([
-    html.Div([
-        html.H2('Preinscripciones de Posgrado', className='eight columns'),
-        html.Img(src='/assets/untref_logo.jpg', className='four columns'),
-        #html.Div(className='logo'),
+    # HEADER
+    html.Div(className='row',
+             children=[
+                 html.H2('Preinscripciones de Posgrado', className='eight columns'),
+                 html.Img(src='/assets/untref_logo.jpg', className='four columns'),
+                 ]
+             ),
 
-        html.Div([\
-            html.P(welcome.welcome.split('#')[i], className='texto_intro') for i in range(len(welcome.welcome.split('#')))\
-        ], className='ten columns'),
+    html.Div(className='row',
+             hidden=False,
+             children=[
+                 html.Label('Ingrese la contraseña:', className='three columns',style={'margin-top': '7px',
+                                                                                       }),
+                 dcc.Input(id='password',
+                           type='password',
+                           className='two columns',
+                           autoFocus=True,
+                           style = {#'margin-top': '100px',
+                                    'margin-left': '-5%'}
+                           ),
+                 ]
+             ),
 
-        html.Div([ \
-            html.P(welcome.welcome_tags.split('#')[i], className='texto_intro') for i in
-            range(len(welcome.welcome_tags.split('#'))) \
-            ], className='eight columns'),
-
-    ], className='row'),
     html.Hr(className='linea'),
 
-    # SELECCION DE NIVEL
-    dcc.RadioItems(
-        id='nivel_elegido',
-        options=[{'label': k, 'value': k} for k in all_options.keys()],
-        value='Total Institución',
-        labelStyle={'display': 'inline-block', 'margin-right':'15px'},
-        className='niveles'
-    ),
-    html.Hr(className='linea'),
+    html.Div(id='password_valid',
+             hidden=True,
+             children=[
+                # welcome DIV
+                html.Div([
+                    html.Div([\
+                        html.P(welcome.welcome.split('#')[i], className='texto_intro') for i in range(len(welcome.welcome.split('#')))\
+                    ], className='twelve columns'),
+                    html.Div([ \
+                        html.P(welcome.welcome_tags.split('#')[i], className='texto_intro') for i in
+                        range(len(welcome.welcome_tags.split('#'))) \
+                        ], className='eight columns'),
+                ], className='row'),
 
-    # DROPDOWN CARRERAS X NIVEL
-    html.Div([
-        html.Label('Seleccione una propuesta:', className='row'),
-        dcc.Dropdown(options=[dict({'label': propuestas_lst[i],
-                                    'value': propuestas_lst[i]})
-                              for i in range(len(propuestas_lst))],
-                     id = 'carrera_elegida',
-                     value='',
-                     clearable=False,
-                     ),
-    ], className='row'),
+                html.Hr(className='linea'),
+                # SELECCION DE NIVEL
+                html.Div([
+                    html.Label('Seleccione un nivel:', className='row'),
+                    dcc.RadioItems(
+                        id='nivel_elegido',
+                        options=[{'label': k, 'value': k} for k in all_options.keys()],
+                        value='Total Institución',
+                        labelStyle={'display': 'inline-block', 'margin-right':'15px'},
+                        className='niveles'),
+                    html.Hr(className='linea'),
+                ], className='row'),
 
-    # CUERPO POR NIVEL
-    html.Div([
-        html.H4(children='',
-                id='subtitulo',
-                className='twelve columns, carrera'
+                # DROPDOWN CARRERAS X NIVEL
+                html.Div([
+                    html.Label('Seleccione una propuesta:', className='row'),
+                    dcc.Dropdown(options=[dict({'label': propuestas_lst[i],
+                                                'value': propuestas_lst[i]})
+                                          for i in range(len(propuestas_lst))],
+                                 id = 'carrera_elegida',
+                                 value='',
+                                 clearable=False),
+                ], className='row'),
+
+                # CUERPO POR NIVEL
+                html.Div([
+                    html.H4(children='',
+                            id='subtitulo',
+                            className='twelve columns, carrera'
+                            ),
+                    html.P(
+                            id='subtitulo_sigla',
+                            className='two columns, sigla'
+                            ),
+                ], className='row'),
+
+                # graphs DIV
+                html.Div([
+                    # SCATTER PLOT
+                    html.Div([
+                        dcc.Graph(
+                            id='graph_fechas',
+                            style={'height':400},
+                            responsive=True),
+                    ],className="seven columns"),
+                    # GRAFICO DE BARRAS
+                    html.Div([
+                        dcc.Graph(
+                            id='graph_sexo',
+                            style={'height':400}),
+                    ],className="five columns"),
+                ],className="row"),
+
+                # BOTON DE DESCARGA
+                html.A(
+                    'Descargar tabla',
+                    id='download-link',
+                    download="tabla-preinscriptos.csv",
+                    href="",
+                    target="_blank",
+                ),html.P('(formato CSV)',className='span'),
+
+                # DROPDOWN CARRERAS X NIVEL
+                html.Div([
+                    html.Label('Seleccione un nivel:', className='row'),
+                    dcc.Dropdown(options=[dict({'label': niveles[i], 'value': niveles[i]})
+                                          for i in range(len(niveles))],
+                                 id='nivel_elegido_home',
+                                 value='',
+                                 clearable=False,
+                                 disabled=True,
+                                 ),
+                ],id='selector_nivel',hidden=True, className='row'),
+
+                # TABLA DE DATOS
+                dash_table.DataTable(
+                    id='tabla-datos',
+                    sort_action='native',
+                    style_data_conditional=[
+                            {
+                                'if': {
+                                    'filter_query': '{estado} = Inscripto',
+                                },
+                                'backgroundColor': '#008a5a',
+                                'color': 'white'
+                            },]
                 ),
-        html.P(
-                id='subtitulo_sigla',
-                className='two columns, sigla'
-                ),
-    ], className='row'),
-
-    # SCATTER PLOT
-    html.Div([
-        html.Div([
-            dcc.Graph(
-                id='graph_fechas',
-            ),
-        ],className="seven columns"),
-
-    # GRAFICO DE BARRAS
-        html.Div([
-            dcc.Graph(
-                id='graph_sexo',
-            ),
-        ],className="five columns"),
-    ],className="row"),
-
-    # BOTON DE DESCARGA
-    html.A(
-        'Descargar tabla',
-        id='download-link',
-        download="tabla-preinscriptos.csv",
-        href="",
-        target="_blank",
-    ),html.P('(formato CSV)',className='span'),
-
-    # DROPDOWN CARRERAS X NIVEL
-    html.Div([
-        html.Label('Seleccione un nivel:', className='row'),
-        dcc.Dropdown(options=[dict({'label': niveles[i], 'value': niveles[i]})
-                              for i in range(len(niveles))],
-                     id='nivel_elegido_home',
-                     value='',
-                     clearable=False,
-                     disabled=True,
-                     ),
-    ],id='selector_nivel',hidden=True, className='row'),
-
-    # TABLA DE DATOS
-    dash_table.DataTable(
-        id='tabla-datos',
-        sort_action='native',
-        style_data_conditional=[
-                {
-                    'if': {
-                        'filter_query': '{estado} = Inscripto',
-                    },
-                    'backgroundColor': '#008a5a',
-                    'color': 'white'
-                },]
-    ),
+    ])
 ],className='cuerpo')
 
 ################################## APP LAYOUT ###################################
 ################################## CALL BACKS ###################################
+
+@app.callback(
+    Output('password_valid','hidden'),
+    [Input('password','value')])
+def password(password):
+    password_key = 'Un7r3f_2020'
+
+    if password == password_key:
+        return False
+    else:
+        return True
 
 @app.callback(
     Output('carrera_elegida', 'options'),
@@ -268,13 +303,14 @@ def update_datos(input_value):
     else:
         vista = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','estado','cant','fecha_insc']].copy()
         vista['cant'] = range(1,len(vista)+1)
-        tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad','nro_doc','sexo','estado']].copy() # agregar 'celular','e_mail' en produccion
+        tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad',
+                                                       'nro_doc','sexo','e_mail','estado']].copy() # agregar 'celular' en produccion
 
-        layout_a = {'title': 'Detalle por fecha'}
+        layout_a = {'title': 'Preinscriptos por fecha'}
 
         vista_b = pre.loc[pre.propuesta == input_value][['estado']].copy()
         data_estado_dic = dict(vista_b['estado'].value_counts())
-        layout_b = {'title': 'Detalle por estado'}
+        layout_b = {'title': 'Preinscriptos por estado'}
 
         estado_labels = ['Activo', 'Potencial', 'Inscripto']
 
