@@ -252,7 +252,10 @@ def password(password):
     Output('carrera_elegida', 'options'),
     [Input('nivel_elegido', 'value')])
 def set_nivel(selected_carrera):
-    niveles_lst = [{'label': i, 'value': i} for i in all_options[selected_carrera]]
+    level_set = all_options[selected_carrera]
+    level_set.sort()
+
+    niveles_lst = [{'label': i, 'value': i} for i in level_set]
     niveles_lst.append({'label': 'Total Institución', 'value': 'Total Institución'})
     return niveles_lst
 
