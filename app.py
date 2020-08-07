@@ -1,10 +1,15 @@
 ##################################### IMPORTING ################################
 # -*- coding: utf-8 -*-
-import pandas as pd ; import assets.consulta as consulta ; import plotly.graph_objs as go
-import dash
+import pandas as pd ; import urllib ; import urllib.parse
+
+import plotly.graph_objs as go
+import dash ; import dash_table; from dash.dependencies import Output, Input
 import dash_core_components as dcc ; import dash_html_components as html
-import dash_table ; from dash.dependencies import Output, Input
-import urllib ; import urllib.parse
+
+import assets.consulta as consulta ;
+
+import base64
+import io
 ##################################### IMPORTING ################################
 #################################### CONSULTA DB ###############################
 
@@ -88,7 +93,7 @@ app.title = 'Inscripciones de POSGRADOS'
 
 server = app.server # the Flask app
 
-################################## APP SETTING ###############################
+################################## TABLE SETTING ###############################
 def generate_table(dataframe, max_rows=100):
     return html.Table([
         html.Thead(
@@ -222,7 +227,7 @@ app.layout = html.Div([
                 html.A(
                     'Descargar tabla',
                     id='download-link',
-                    download="tabla-preinscriptos.csv",
+                    download="tabla-preinscriptos.xlsx",
                     href="",
                     target="_blank",
                 ),html.P('(formato CSV)',className='span'),
@@ -378,8 +383,16 @@ def update_datos(input_value):
         pass
 
     # FILE EXPORTING
-    csv_string = tabla.to_csv(index=False, encoding='Latin-1')
-    csv_string = "data:text/csv;charset=Latin-1," + urllib.parse.quote(csv_string)
+    xlsx_io = io.BytesIO()
+    writer = pd.ExcelWriter(xlsx_io, engine='xlsxwriter')
+    tabla.reset_index(drop=True,inplace=True)
+    tabla.to_excel(writer, sheet_name=dic_nom_sigla[input_value])
+    writer.save()
+    xlsx_io.seek(0)
+    media_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    data = base64.b64encode(xlsx_io.read()).decode("utf-8")
+    xls_string = f'data:{media_type};base64,{data}'
+
 
     if input_value == 'Total Institución':
         return [input_value,
@@ -394,7 +407,7 @@ def update_datos(input_value):
                 },
                 tabla.to_dict('records'),
                 [{"name": dic_columns[i], "id": i} for i in tabla.columns],
-                csv_string
+                xls_string,
                 ]
     else:
         return [input_value,
@@ -409,7 +422,7 @@ def update_datos(input_value):
                 },
                 tabla.to_dict('records'),
                 [{"name": dic_columns[i], "id": i} for i in tabla.columns],
-                csv_string
+                xls_string,
                 ]
 
 
