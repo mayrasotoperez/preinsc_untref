@@ -230,7 +230,7 @@ app.layout = html.Div([
                     download="tabla-preinscriptos.xlsx",
                     href="",
                     target="_blank",
-                ),html.P('(formato CSV)',className='span'),
+                ),html.P('(formato Excel)',className='span'),
 
                 # DROPDOWN CARRERAS X NIVEL
                 html.Div([
