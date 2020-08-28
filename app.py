@@ -1,116 +1,109 @@
 ##################################### IMPORTING ################################
 # -*- coding: utf-8 -*-
-import pandas as pd ; import urllib ; import urllib.parse
-
+# importamos las librerias que implementaremos
+import pandas as pd ; import base64 ; import io
 import plotly.graph_objs as go
 import dash ; import dash_table; from dash.dependencies import Output, Input
 import dash_core_components as dcc ; import dash_html_components as html
-
+# ademas importamos la funcion de consulta.py que ejecuta las querys SQL
 import assets.consulta as consulta ;
-
-import base64
-import io
+# de welcome traemos los textos
+import assets.entry_text as welcome
+import datetime as dt
 ##################################### IMPORTING ################################
 #################################### CONSULTA DB ###############################
 
+# instanciamos en totales todos los datos de preinscriptos y tambien guardamos un diccionario con nombres y siglas de propuestas
 totales,dic_sigla_nom = consulta.consulta_db()
-
-totales.fecha_insc.fillna(0,inplace=True)
-
-pre = totales.loc[totales.propuesta != 'Sin Propuesta']
-pre['cant'] = [i+1 for i in range(len(pre))]
-dic_nom_sigla = {pre.propuesta.iloc[i]: pre.sigla.iloc[i] for i in range(len(pre))}
-dic_nom_sigla.update({'Total Institución': ''})
-
+dic_sigla_nom.update({'Total Institución': ''})
 
 #################################### CONSULTA DB ###############################
-################################### TABLAS DATOS ###############################
+#################################### RAW PYTHON  ###############################
+
+# completamos valores faltantes con 0
+totales.fecha_insc.fillna(0,inplace=True)
+
+# en pre filtraremos de totales la propuesta elegida
+pre = totales.loc[totales.propuesta != 'Sin Propuesta']
+# cant guardará la frecuencia
+pre['cant'] = [i+1 for i in range(len(pre))]
+# necesitaremos el diccionario de siglas y propuestas pero inverso
+dic_nom_sigla = {pre.propuesta.iloc[i]: pre.sigla.iloc[i] for i in range(len(pre))}
+# al cual agregamos "total institucion como una key
+dic_nom_sigla.update({'Total Institución': ''})
+
+# establecemos y ordenamos una lista de propuestas disponibles para seleccionar
 propuestas_lst = list(pre.propuesta.unique())
 propuestas_lst.sort()
 
-dic_sigla_nom.update({'Total Institución': ''})
+# armamos un df con siglas y nombres para poder trabajarlos
 siglas = pd.DataFrame([dic_sigla_nom.keys(),dic_sigla_nom.values()]).T
-
 siglas.columns = ['sigla','propuesta']
 siglas = siglas.loc[siglas.sigla.isin(dic_nom_sigla.values())]
+# extraemos el nivel del nombre de la propuesta
 siglas['nivel'] = [siglas.propuesta.iloc[i].split(' ')[0] for i in range(len(siglas))]
 
-
+# hardcodeamos la lista de niveles, esto no se modificará nunca
 niveles = ['Total Institución','Curso', 'Doctorado', 'Diplomatura', 'Especialización', 'Maestría']
 
-
+# creamos un diccionario de niveles y propuestas por cada nivel
 all_options = {}
-
 for niv in niveles:
     cont = list(siglas.loc[siglas['nivel'] == niv]['propuesta'].unique())
     all_options.update({niv:cont})
 
-
-
-################################### RAW PYTHON ###############################
-
+# generamos los marcos para los graficos de fechas y estados
 trace_totales = go.Scatter()
 trace_estado = go.Bar()
 
+# generamos un dic con los estados posibles
 data_estado_dic = dict(totales['estado'].value_counts())
 
+# los estados nunca cambiarán
 labels = ['Pendiente','Activo','Potencial','Inscripto']
 values = []
-
 for i in labels:
     try:         value = data_estado_dic[i]
     except:      value = 0
     values.append(value)
 
+# para la pantalla inicial
 tabla_a = pre.copy()
 
-dic_columns = {'fecha_preinscripcion': 'Fecha',
-               'nivel': 'Nivel',
-               'propuesta': 'Carrera',
-               'ape': 'Apellido/s',
-               'nom': 'Nombre/s',
-               'nacionalidad': 'Nacionalidad',
-               'edad': 'Edad',
-               'nro_doc': 'Nro. Documento',
-               'sexo': 'Sexo',
-               'celular': 'Nro. Celular',
-               'e_mail': 'e-Mail',
-               'cant': 'Cantidad',
-               'estado':'Estado',
-               'Pendiente':'Pendientes',
-               'Activo':'Activos',
-               'Potencial':'Potenciales',
-               'Inscripto':'Inscriptos',
-               'Totales':'Totales'
+# trazamos equivalencias entre el nombre de la columna y el nombre que imprimirá, para facilitar la lectura al usuario
+dic_columns = {'fecha_preinscripcion': 'Fecha', 'nivel': 'Nivel',  'propuesta': 'Carrera', 'ape': 'Apellido/s',
+               'nom': 'Nombre/s', 'nacionalidad': 'Nacionalidad', 'edad': 'Edad', 'nro_doc': 'Nro. Documento',
+               'sexo': 'Sexo', 'celular': 'Nro. Celular', 'e_mail': 'e-Mail', 'cant': 'Cantidad', 'estado':'Estado',
+               'Pendiente':'Pendientes', 'Activo':'Activos', 'Potencial':'Potenciales', 'Inscripto':'Inscriptos', 'Totales':'Totales'
                }
-################################### RAW PYTHON ###############################
-################################## APP SETTING ###############################
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-
-app.title = 'Inscripciones de POSGRADOS'
-
-server = app.server # the Flask app
-
-################################## TABLE SETTING ###############################
+# armamos una funcion que nos organice la tabla de resultados
 def generate_table(dataframe, max_rows=100):
     return html.Table([
-        html.Thead(
-            html.Tr([html.Th(col) for col in dataframe.columns])
-        ),
+        html.Thead(html.Tr([html.Th(col) for col in dataframe.columns])),
         html.Tbody([
-            html.Tr([
-                html.Td(dataframe.iloc[i][col]) for col in dataframe.columns
-            ]) for i in range(min(len(dataframe), max_rows))
-        ])
-    ])
-################################## APP LAYOUT ################################
-input_value = 'Total Institución'
-import assets.entry_text as welcome
+            html.Tr([html.Td(dataframe.iloc[i][col]) for col in dataframe.columns]) for i in range(min(len(dataframe), max_rows))
+        ])])
 
+################################### RAW PYTHON ###############################
+################################## APP SETTING ###############################
+# seteamos la url del ccs
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+# instanciamos la app
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+# le definimos un título
+app.title = 'Inscripciones de POSGRADOS'
+# instanciamos el servidor
+server = app.server # the Flask app
+
+################################## APP SETTING ###############################
+################################## APP LAYOUT ################################
+# seteamos como valor inicial "Total Institución" para que se pueda comenzar a visualizar sin haber elegido propuesta alguna
+input_value = 'Total Institución'
+
+# comenzamos a organizar la app
 app.layout = html.Div([
-    # HEADER
+    # creamos un HEADER con el título y logo
     html.Div(className='row',
              children=[
                  html.H2('Preinscripciones de Posgrado', className='eight columns'),
@@ -119,6 +112,7 @@ app.layout = html.Div([
                           style={'margin-top':'22px'}),
                  ]
              ),
+    # agregamos un Input donde se debe ingresar la contraseña para desbloquear la app
     html.Div(className='row',
              hidden=False,
              children=[
@@ -133,10 +127,11 @@ app.layout = html.Div([
              ),
     html.Hr(className='linea'),
 
+    # si se ingresa la contraseña correcta, el atributo hidden del siguiente div pasa a False para mostrar toda la app
     html.Div(id='password_valid',
              hidden=True,
              children=[
-                 # welcome DIV
+                 # welcome DIV nos muestra los textos explicativos de intro y estados
                  html.Div(className='row',
                           style={'margin-left':'8%','margin-right':'8%','background-color':'#eeeeee','border-radius':'10px','padding':'20px'},
                           children=[
@@ -169,70 +164,82 @@ app.layout = html.Div([
                           ]
                           ),
 
-                # SELECCION DE NIVEL
-                html.Div([
-                    html.Label(children='Seleccione un nivel:',
-                               className='row',
-                               style={'margin-top':'20px'},),
-                    dcc.RadioItems(
-                        id='nivel_elegido',
-                        options=[{'label': k, 'value': k} for k in all_options.keys()],
-                        value='Total Institución',
-                        labelStyle={'display': 'inline-block', 'margin-right':'15px'},
-                        className='niveles'),
-                    html.Hr(className='linea'),
-                ], className='row'),
+                # mediante RadioButtons realizamos la SELECCION DE NIVEL como primer filtro
+                html.Div(className='row',
+                         children=[
+                             html.Label(children='Seleccione un nivel:',
+                                        className='row',
+                                        style={'margin-top':'20px'},),
+                             dcc.RadioItems(
+                                 id='nivel_elegido',
+                                 className='niveles',
+                                 options=[{'label': k, 'value': k} for k in all_options.keys()],
+                                 value='Total Institución',
+                                 labelStyle={'display': 'inline-block', 'margin-right':'15px'},
+                                 ),
+                             html.Hr(className='linea'),
+                             ]
+                         ),
 
-                # DROPDOWN CARRERAS X NIVEL
-                html.Div([
-                    html.Label('Seleccione una propuesta:', className='row'),
-                    dcc.Dropdown(options=[dict({'label': propuestas_lst[i],
-                                                'value': propuestas_lst[i]})
-                                          for i in range(len(propuestas_lst))],
-                                 id = 'carrera_elegida',
-                                 value='',
-                                 clearable=False),
-                ], className='row'),
+                # mediante DROPDOWN CARRERAS X NIVEL realizamos el segundo filtro
+                html.Div(className='row',
+                         children=[
+                             html.Label(className='row',
+                                        children='Seleccione una propuesta:'),
+                             dcc.Dropdown(id = 'carrera_elegida',
+                                          options=[dict({'label': propuestas_lst[i], 'value': propuestas_lst[i]}) for i in range(len(propuestas_lst))],
+                                          value='',
+                                          clearable=False
+                                          ),
+                             ]
+                         ),
 
-                # CUERPO POR NIVEL
-                html.Div([
-                    html.H4(children='',
-                            id='subtitulo',
-                            className='twelve columns, carrera'
-                            ),
-                    html.P(
-                            id='subtitulo_sigla',
-                            className='two columns, sigla'
-                            ),
-                ], className='row'),
+                # Una vez seleccionada la carrera, dispondremos la info en el "HEADER"
+                html.Div(className='row',
+                         children=[
+                             # aqui establecemos el título, que será la carreram, y la sigla para empezar a impregnar este dato en el usuario.
+                             html.H4(children='',
+                                     id='subtitulo',
+                                     className='twelve columns, carrera' ),
+                             html.P(id='subtitulo_sigla',
+                                    className='two columns, sigla'),
+                             ]
+                         ),
 
-                # graphs DIV
-                html.Div([
+                # Generamos un DIV para los gráficos
+                html.Div(className="row",
+                         children=[
                     # SCATTER PLOT
-                    html.Div([
-                        dcc.Graph(
-                            id='graph_fechas',
-                            style={'height':400},
-                            responsive=True),
-                    ],className="seven columns"),
+                    html.Div(className="seven columns",
+                             children=[
+                                 dcc.Graph(
+                                     id='graph_fechas',
+                                     style={'height':400},
+                                     responsive=True),
+                                    ],
+                             ),
                     # GRAFICO DE BARRAS
-                    html.Div([
-                        dcc.Graph(
-                            id='graph_sexo',
-                            style={'height':400}),
-                    ],className="five columns"),
-                ],className="row"),
+                    html.Div(className="five columns",
+                             children=[
+                                 dcc.Graph(
+                                     id='graph_sexo',
+                                     style={'height':400}),
+                                 ],
+                             ),
+                             ]
+                         ),
 
                 # BOTON DE DESCARGA
                 html.A(
-                    'Descargar tabla',
+                    children='Descargar tabla',
                     id='download-link',
                     download="tabla-preinscriptos.xlsx",
                     href="",
                     target="_blank",
-                ),html.P('(formato Excel)',className='span'),
+                ),
+                 html.P('(formato Excel)',className='span'),
 
-                # DROPDOWN CARRERAS X NIVEL
+                # generamos un div oculto para vincular los callbacks
                 html.Div([
                     html.Label('Seleccione un nivel:', className='row'),
                     dcc.Dropdown(options=[dict({'label': niveles[i], 'value': niveles[i]})
@@ -244,10 +251,11 @@ app.layout = html.Div([
                                  ),
                 ],id='selector_nivel',hidden=True, className='row'),
 
-                # TABLA DE DATOS
+                # Finalmente, desplegamos la tabla de datos
                 dash_table.DataTable(
                     id='tabla-datos',
                     sort_action='native',
+                    # aplicamos un filtro condicional para resaltar inscriptos
                     style_data_conditional=[
                             {
                                 'if': {
@@ -262,7 +270,7 @@ app.layout = html.Div([
 
 ################################## APP LAYOUT ###################################
 ################################## CALL BACKS ###################################
-
+# el primer callback refresca el hidden de la app, para visualizarla con la contraseña
 @app.callback(
     Output('password_valid','hidden'),
     [Input('password','value')])
@@ -276,6 +284,7 @@ def password(password):
     else:
         return True
 
+# luego de seleccionar el nivel, este callback devuelve un listado de propuestas dentro de dicho nivel
 @app.callback(
     Output('carrera_elegida', 'options'),
     [Input('nivel_elegido', 'value')])
@@ -286,12 +295,14 @@ def set_nivel(selected_carrera):
     niveles_lst.append({'label': 'Total Institución', 'value': 'Total Institución'})
     return niveles_lst
 
+# con el nivel elegido, seleccionamos una carrera que será el input_value de toda la info
 @app.callback(
     Output('carrera_elegida', 'value'),
     [Input('carrera_elegida', 'options')])
 def set_carreras(available_options):
     return available_options[0]['value']
 
+# con la carrera elegida, obtenemos todos los outputs para las diferentes funciones
 @app.callback(
             [dash.dependencies.Output('subtitulo', 'children'),
              dash.dependencies.Output('subtitulo_sigla', 'children'),
@@ -392,7 +403,6 @@ def update_datos(input_value):
     media_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     data = base64.b64encode(xlsx_io.read()).decode("utf-8")
     xls_string = f'data:{media_type};base64,{data}'
-
 
     if input_value == 'Total Institución':
         return [input_value,

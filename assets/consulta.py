@@ -137,6 +137,9 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
 
     dic_personas = {personas.persona.iloc[i]: personas.usuario.iloc[i] for i in range(len(personas))}
 
+    # se preinscribió alguien que ya era persona, al procesar esa preinscripcion se rompio por lo que la agrego a mano y sigue...
+    dic_personas.update({11247: '22655029'})
+
     aspira['DNI'] = aspira.persona.map(dic_personas)
 
     dic_fechas_insc = {str(aspira.DNI.iloc[i]) + '_' + str(aspira.propuesta.iloc[i]): aspira.fecha_alta.iloc[i] for i in
@@ -194,6 +197,9 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
 
     totales.propuesta_id.fillna(0, inplace=True)
     totales.propuesta_id = totales.propuesta_id.astype(int)
+
+
+
 
     totales['dni_prop'] = [str(totales.nro_doc.iloc[i]) + '_' + str(totales.propuesta_id.iloc[i]) for i in
                            range(len(totales))]
