@@ -139,6 +139,7 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
 
     # se preinscribió alguien que ya era persona, al procesar esa preinscripcion se rompio por lo que la agrego a mano y sigue...
     dic_personas.update({11247: '22655029'})
+    dic_personas.update({13125: '10846093'})
 
     aspira['DNI'] = aspira.persona.map(dic_personas)
 
@@ -164,7 +165,7 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
     def calculate_age(b):
         try:
             return datetime.date.today().year - b.year - (
-                        (datetime.date.today().month, datetime.date.today().day) < (b.month, b.day))
+                    (datetime.date.today().month, datetime.date.today().day) < (b.month, b.day))
         except:
             return 'No Informa'
 
@@ -198,20 +199,24 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
     totales.propuesta_id.fillna(0, inplace=True)
     totales.propuesta_id = totales.propuesta_id.astype(int)
 
-
-
-
     totales['dni_prop'] = [str(totales.nro_doc.iloc[i]) + '_' + str(totales.propuesta_id.iloc[i]) for i in
                            range(len(totales))]
 
     totales['fecha_insc'] = np.nan
     totales.reset_index(inplace=True, drop=True)
 
+    errores = []
     for i in range(len(totales)):
         if totales.estado.iloc[i] == 'Inscripto':
-            totales.fecha_insc.iloc[i] = dic_fechas_insc[totales.dni_prop.iloc[i]]
+            try:
+                totales.fecha_insc.iloc[i] = dic_fechas_insc[totales.dni_prop.iloc[i]]
+            except:
+                errores.append(i)
         else:
             pass
+
+    totales = totales.drop(errores)
+    totales.reset_index(inplace=True, drop=True)
 
     totales.fecha_insc.fillna(0, inplace=True)
 
@@ -219,7 +224,7 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
     totales.loc[(totales.propuesta != 'Sin Propuesta') & (totales.version != 'Correcta'), 'estado'] = 'Activo'
     totales.loc[(totales.propuesta != 'Sin Propuesta') & (totales.version == 'Correcta'), 'estado'] = 'Potencial'
     totales.loc[(totales.propuesta != 'Sin Propuesta') & (totales.version == 'Correcta') & (
-                totales.fecha_insc != 0), 'estado'] = 'Inscripto'
+            totales.fecha_insc != 0), 'estado'] = 'Inscripto'
 
     # ACOMODAMOS LAS FEATURES
     totales = totales[['id_preinscripcion', 'estado', 'nivel', 'sigla', 'propuesta', 'version',
