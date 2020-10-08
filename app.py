@@ -215,7 +215,8 @@ app.layout = html.Div([
                                  dcc.Graph(
                                      id='graph_fechas',
                                      style={'height':400},
-                                     responsive=True),
+                                     #responsive=True
+                                 ),
                                     ],
                              ),
                     # GRAFICO DE BARRAS
