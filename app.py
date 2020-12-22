@@ -231,7 +231,6 @@ app.layout = html.Div([
                                   children=[
                                       dcc.Graph(
                                           id='graph_fechas',
-                                          className="block",
                                           style={
                                                  'height':'400px'}
                                           ),
@@ -240,11 +239,10 @@ app.layout = html.Div([
 
                               # GRAFICO DE BARRAS
                               html.Div(
-                                  className="two columns",
+                                  className="five columns",
                                   children=[
                                       dcc.Graph(
                                           id='graph_sexo',
-                                          className="block",
                                           style={
                                                  'height':'400px'}
                                           ),
