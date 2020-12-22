@@ -231,7 +231,9 @@ app.layout = html.Div([
                                   children=[
                                       dcc.Graph(
                                           id='graph_fechas',
-                                          #style={'width': '100%'}
+                                          className="block",
+                                          style={
+                                                 'height':'400px'}
                                           ),
                                       ],
                                   ),
@@ -242,8 +244,9 @@ app.layout = html.Div([
                                   children=[
                                       dcc.Graph(
                                           id='graph_sexo',
-                                          #className="block",
-                                          #style={'width':'100%'}
+                                          className="block",
+                                          style={
+                                                 'height':'400px'}
                                           ),
                                       ],
                                   ),
