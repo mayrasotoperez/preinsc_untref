@@ -5,7 +5,7 @@ import assets.data as data
 import psycopg2, psycopg2.extras
 import warnings;
 
-warnings.filterwarnings('ignore')
+#warnings.filterwarnings('ignore')
 
 # Esta celda permite obtener toda la tabla que sea seleccionada (el orden de las columnas varía desde la db hacia aqui)
 # elegimos el origen
