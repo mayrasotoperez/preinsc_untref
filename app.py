@@ -30,7 +30,7 @@ dic_sigla_nom.update({'Total Institución': ''})
 totales.fecha_insc.fillna(0, inplace=True)
 
 # en pre filtraremos de totales la propuesta elegida
-pre = totales.loc[totales.propuesta != 'Sin Propuesta']
+pre = totales.loc[totales.propuesta != 'Sin Propuesta'].copy()
 # cant guardará la frecuencia
 pre['cant'] = [i + 1 for i in range(len(pre))]
 # necesitaremos el diccionario de siglas y propuestas pero inverso
@@ -45,7 +45,7 @@ propuestas_lst.sort()
 # armamos un df con siglas y nombres para poder trabajarlos
 siglas = pd.DataFrame([dic_sigla_nom.keys(), dic_sigla_nom.values()]).T
 siglas.columns = ['sigla', 'propuesta']
-siglas = siglas.loc[siglas.sigla.isin(dic_nom_sigla.values())]
+siglas = siglas.loc[siglas.sigla.isin(dic_nom_sigla.values())].copy()
 # extraemos el nivel del nombre de la propuesta
 siglas['nivel'] = [siglas.propuesta.iloc[i].split(' ')[0] for i in range(len(siglas))]
 

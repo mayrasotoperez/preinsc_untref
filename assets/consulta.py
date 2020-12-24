@@ -52,6 +52,7 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
     columns = list(tablas.loc[tablas['tabla_name'] == tabla_objetivo]['campo'].unique())
     get_table(esquema, tabla_objetivo, columns)
 
+
     # P : Pendiente de activacion
     # A : Activado. La persona respondió el mail enviado
     # C : Preparado para proceso masivo de inscripción.
@@ -80,6 +81,7 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
 
     estados_dic = {'P': 'Pendiente', 'A': 'Activo', 'C': 'Potencial', 'I': 'Inscripto'}
     users_prop['estado'] = users_prop.estado.map(estados_dic)
+
 
     # DataBase: Gestion
     data_db = 'guarani3162posgrado'
@@ -155,6 +157,7 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
 
     totales.loc[totales.estado.isna(), 'estado'] = 'Activo'
 
+
     # MAPPING DATA
     # DOCUMENTO TIPO
     doc_tipo = {0: 'DNI', 1: 'DNT', 2: 'CI', 3: 'CUIL', 18: 'LE', 19: 'LC', 20: 'CM', 21: 'CD', 22: 'CC', 23: 'CDI',
@@ -194,14 +197,12 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
             i] else 'Anterior' for i in range(len(totales))]
     totales = totales.sort_values(by='fecha_preinscripcion')
 
+
     # FECHA DE INSCRIPCION (solo para inscriptos)
-
     totales.propuesta_id.fillna(0, inplace=True)
-    totales.propuesta_id = totales.propuesta_id.astype(int)
-
+    totales['propuesta_id'] = totales.propuesta_id.astype(int)
     totales['dni_prop'] = [str(totales.nro_doc.iloc[i]) + '_' + str(totales.propuesta_id.iloc[i]) for i in
                            range(len(totales))]
-
     totales['fecha_insc'] = np.nan
     totales.reset_index(inplace=True, drop=True)
 
@@ -209,17 +210,15 @@ def consulta_db(user_db=user_db, pass_db=pass_db, host=host):
     for i in range(len(totales)):
         if totales.estado.iloc[i] == 'Inscripto':
             try:
-                totales.fecha_insc.iloc[i] = dic_fechas_insc[totales.dni_prop.iloc[i]]
+                totales.loc[i,'fecha_insc'] = dic_fechas_insc[totales.dni_prop.iloc[i]]
             except:
                 errores.append(i)
         else:
             pass
-
     totales = totales.drop(errores)
     totales.reset_index(inplace=True, drop=True)
 
     totales.fecha_insc.fillna(0, inplace=True)
-
     totales.loc[totales.propuesta == 'Sin Propuesta', 'estado'] = 'Pendiente'
     totales.loc[(totales.propuesta != 'Sin Propuesta') & (totales.version != 'Correcta'), 'estado'] = 'Activo'
     totales.loc[(totales.propuesta != 'Sin Propuesta') & (totales.version == 'Correcta'), 'estado'] = 'Potencial'
