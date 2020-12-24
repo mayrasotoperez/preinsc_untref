@@ -146,7 +146,7 @@ app.layout = html.Div([
              children=[
                  # welcome DIV nos muestra los textos explicativos de intro y estados
                  html.Div(className='row',
-                          style={'margin-left': '8%', 'margin-right': '8%', 'background-color': '#eeeeee',
+                          style={'margin-left': '8%', 'margin-right': '8%', 'background-color': 'red', #'#eeeeee'
                                  'border-radius': '10px', 'padding': '20px'},
                           children=[
                               html.Div(className='six columns',
