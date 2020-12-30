@@ -1,7 +1,7 @@
 welcome = '''En los datos de preinscriptos podemos encontrar diferentes niveles de "intención" de concretar una inscripción.
              Dado que una persona podría haber generado su usuario, completar sus datos e incluso imprimir el formulario,
              pero finalmente no concurrir en ningún momento a la institución.
-             Valuaremos la intención de efectivamente inscribirse a un posgrado en base a: haber validado un usuario de preinscripción,
+             # Valuaremos la intención de efectivamente inscribirse a un posgrado en base a: haber validado un usuario de preinscripción,
              tener una propuesta formativa seleccionada y tener impreso la última versión de su formulario de preinscripción.'''
 
 welcome_tags = '''# **PENDIENTE:** la persona generó un usuario, pero no activó el mismo o no seleccionó propuesta.

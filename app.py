@@ -58,10 +58,6 @@ for niv in niveles:
     cont = list(siglas.loc[siglas['nivel'] == niv]['propuesta'].unique())
     all_options.update({niv: cont})
 
-# generamos los marcos para los graficos de fechas y estados
-trace_totales = go.Scatter()
-trace_estado = go.Bar()
-
 # generamos un dic con los estados posibles
 data_estado_dic = dict(totales['estado'].value_counts())
 
@@ -69,10 +65,8 @@ data_estado_dic = dict(totales['estado'].value_counts())
 labels = ['Pendiente', 'Activo', 'Potencial', 'Inscripto']
 values = []
 for i in labels:
-    try:
-        value = data_estado_dic[i]
-    except:
-        value = 0
+    try: value = data_estado_dic[i]
+    except: value = 0
     values.append(value)
 
 # para la pantalla inicial
@@ -85,17 +79,6 @@ dic_columns = {'fecha_preinscripcion': 'Fecha', 'nivel': 'Nivel', 'propuesta': '
                'Pendiente': 'Pendientes', 'Activo': 'Activos', 'Potencial': 'Potenciales', 'Inscripto': 'Inscriptos',
                'Totales': 'Totales'
                }
-
-
-# armamos una funcion que nos organice la tabla de resultados
-def generate_table(dataframe, max_rows=100):
-    return html.Table([
-        html.Thead(html.Tr([html.Th(col) for col in dataframe.columns])),
-        html.Tbody([
-            html.Tr([html.Td(dataframe.iloc[i][col]) for col in dataframe.columns]) for i in
-            range(min(len(dataframe), max_rows))
-        ])])
-
 
 ################################### RAW PYTHON ###############################
 ################################## APP SETTING ###############################
@@ -155,14 +138,10 @@ app.layout = html.Div([
                                                       className='row',
                                                       style={'margin-bottom': '10px'}, ),
                                            dcc.Markdown(className='texto_intro',
-                                                        children='''En los datos de preinscriptos podemos encontrar diferentes niveles de _"intención"_ de concretar una inscripción.
-                                                                    Dado que una persona podría haber generado su usuario, completar sus datos e incluso imprimir el formulario,
-                                                                    pero finalmente no concurrir en ningún momento a la institución.'''),
-                                           dcc.Markdown(className='texto_intro',
-                                                        children='''Valuaremos la intención de efectivamente inscribirse a un posgrado en base a haber validado un usuario 
-                                                                    de preinscripción, tener una propuesta formativa seleccionada y tener impreso la última versión de su 
-                                                                    formulario de preinscripción.''')
-                                       ],
+                                                        children=[welcome.welcome.split('#')[i] for i in
+                                                                  range(len(welcome.welcome.split('#')))]
+                                                        )
+                                           ],
                                        ),
                               html.Div(className='six columns',
                                        children=[
@@ -174,9 +153,9 @@ app.layout = html.Div([
                                                         children=[welcome.welcome_tags.split('#')[i] for i in
                                                                   range(len(welcome.welcome_tags.split('#')))]
                                                         )
-                                       ]
+                                           ]
                                        ),
-                          ]
+                              ]
                           ),
 
                  # mediante RadioButtons realizamos la SELECCION DE NIVEL como primer filtro
@@ -195,7 +174,6 @@ app.layout = html.Div([
                               html.Hr(className='linea'),
                           ]
                           ),
-
                  # mediante DROPDOWN CARRERAS X NIVEL realizamos el segundo filtro
                  html.Div(className='row',
                           children=[
@@ -207,19 +185,15 @@ app.layout = html.Div([
                                            value='',
                                            clearable=False
                                            ),
-                          ]
+                              ]
                           ),
-
                  # Una vez seleccionada la carrera, dispondremos la info en el "HEADER"
                  html.Div(className='row',
                           children=[
                               # aqui establecemos el título, que será la carreram, y la sigla para empezar a impregnar este dato en el usuario.
-                              html.H4(children='',
-                                      id='subtitulo',
-                                      className='twelve columns, carrera'),
-                              html.P(id='subtitulo_sigla',
-                                     className='two columns, sigla'),
-                          ]
+                              html.H4(children='', id='subtitulo', className='twelve columns, carrera'),
+                              html.P(id='subtitulo_sigla', className='two columns, sigla'),
+                              ]
                           ),
 
                  # Generamos un DIV para los gráficos
@@ -336,18 +310,6 @@ def update_graficos(input_value):
     if input_value == 'Total Institución':
         vista = pre.copy()
         layout_a = {'title': 'Preinscripciones totales por fecha'}
-
-        # # TABLA
-        # tabla = totales[['nivel','propuesta','estado']].copy()
-        # tabla = pd.concat([tabla.drop('estado', axis=1), pd.get_dummies(tabla.estado)], axis=1)
-        # tabla = tabla.groupby(['nivel', 'propuesta']).sum()
-        # tabla.reset_index(inplace=True)
-        # tabla['Totales'] = tabla.sum(axis=1)
-        # tabla = tabla.loc[tabla.nivel != 'Sin Propuesta']
-        # tabla = tabla.sort_values(by='Totales', ascending=False)
-        # tabla = tabla[['nivel', 'propuesta', 'Activo', 'Potencial', 'Inscripto', 'Totales']]
-
-        vista_b = pre.copy()
         data_estado_dic = dict(totales['estado'].value_counts())
         layout_b = {'title': 'Preinscripciones totales por estado'}
         estado_labels = ['Pendiente', 'Activo', 'Potencial', 'Inscripto']
@@ -356,8 +318,6 @@ def update_graficos(input_value):
     else:
         vista = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion', 'estado', 'cant', 'fecha_insc']].copy()
         vista['cant'] = range(1, len(vista) + 1)
-        # tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','ape','nom','nacionalidad','edad',
-        #                                                'nro_doc','sexo','e_mail','estado']].copy() # agregar 'celular' en produccion
         layout_a = {'title': 'Preinscriptos por fecha'}
         vista_b = pre.loc[pre.propuesta == input_value][['estado']].copy()
         data_estado_dic = dict(vista_b['estado'].value_counts())
@@ -366,7 +326,6 @@ def update_graficos(input_value):
 
     # GRAFICO DE FECHAS
     colors = {'tot_pos': '#bbbbbb', 'poten': '#000e75', 'insc': '#008a5a', 'pend': '#8f2806', 'act': '#06848f'}
-
 
     trace_fechas = go.Scatter(x=list(vista.loc[vista.estado.isin(['Potencial', 'Inscripto'])].fecha_preinscripcion),
                               y=list(vista.cant), name='Totales Posibles', line=dict(color=colors['tot_pos']),
@@ -381,16 +340,12 @@ def update_graficos(input_value):
     # defino una lista para agrupar los 3 scatter plot
     data_fechas_lst = [trace_fechas,trace_fechas_3,trace_fechas_2]
 
-
     # GRAFICO DE ESTADOS
     estado_values = []
     for i in estado_labels:
-        try:
-            value = data_estado_dic[i]
-        except:
-            value = 0
+        try: value = data_estado_dic[i]
+        except: value = 0
         estado_values.append(value)
-
     data_estado_lst = []
 
     if input_value == 'Total Institución':
@@ -401,7 +356,6 @@ def update_graficos(input_value):
         trace_estado = go.Bar(x=estado_labels, y=estado_values, name='sexos',
                               text=estado_values, textposition='auto',
                               marker_color=[colors['act'], colors['poten'], colors['insc']])
-
     data_estado_lst.append(trace_estado)
 
     return [
@@ -420,8 +374,6 @@ def update_graficos(input_value):
 @app.callback(
     [dash.dependencies.Output('subtitulo', 'children'),
      dash.dependencies.Output('subtitulo_sigla', 'children'),
-     # dash.dependencies.Output('graph_fechas', 'figure'),
-     # dash.dependencies.Output('graph_sexo', 'figure'),
      dash.dependencies.Output('tabla-datos', 'data'),
      dash.dependencies.Output('tabla-datos', 'columns'),
      dash.dependencies.Output('download-link', 'href'),
@@ -430,10 +382,6 @@ def update_graficos(input_value):
 def update_datos(input_value):
     # PARA LA PANTALLA INICIAL
     if input_value == 'Total Institución':
-        vista = pre.copy()
-        layout_a = {'title': 'Preinscripciones totales por fecha'}
-
-        # TABLA
         tabla = totales[['nivel', 'propuesta', 'estado']].copy()
         tabla = pd.concat([tabla.drop('estado', axis=1), pd.get_dummies(tabla.estado)], axis=1)
         tabla = tabla.groupby(['nivel', 'propuesta']).sum()
@@ -443,70 +391,14 @@ def update_datos(input_value):
         tabla = tabla.sort_values(by='Totales', ascending=False)
         tabla = tabla[['nivel', 'propuesta', 'Activo', 'Potencial', 'Inscripto', 'Totales']]
 
-        vista_b = pre.copy()
-        data_estado_dic = dict(totales['estado'].value_counts())
-        layout_b = {'title': 'Preinscripciones totales por estado'}
-        estado_labels = ['Pendiente', 'Activo', 'Potencial', 'Inscripto']
-
     # PARA PANTALLA de CADA CARRERA
     else:
-        # vista = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion','estado','cant','fecha_insc']].copy()
-        # vista['cant'] = range(1,len(vista)+1)
         tabla = pre.loc[pre.propuesta == input_value][['fecha_preinscripcion', 'ape', 'nom', 'nacionalidad', 'edad',
                                                        'nro_doc', 'sexo', 'e_mail',
                                                        'estado']].copy()  # agregar 'celular' en produccion
-        # layout_a = {'title': 'Preinscriptos por fecha'}
-        # vista_b = pre.loc[pre.propuesta == input_value][['estado']].copy()
-        # data_estado_dic = dict(vista_b['estado'].value_counts())
-        # layout_b = {'title': 'Preinscriptos por estado'}
-        # estado_labels = ['Activo', 'Potencial', 'Inscripto']
 
-    # # GRAFICO DE FECHAS
-    # colors = {'tot_pos' : '#bbbbbb',
-    #           'poten' : '#000e75',
-    #           'insc' : '#008a5a',
-    #           'pend' : '#8f2806',
-    #           'act' : '#06848f'}
-    #
-    # data_fechas_lst = []
-    # trace_fechas = go.Scatter(x=list(vista.loc[vista.estado.isin(['Potencial','Inscripto'])].fecha_preinscripcion),
-    #                           y=list(vista.cant), name='Totales Posibles', line=dict(color=colors['tot_pos']),
-    #                           )
-    # trace_fechas_3 = go.Scatter(x=list(vista.loc[vista.estado == 'Potencial'].fecha_preinscripcion),
-    #                           y=list(vista.cant), name='Potenciales', line=dict(color=colors['poten']),
-    #                           )
-    # trace_fechas_2 = go.Scatter(x=list(vista.loc[vista.estado == 'Inscripto'].fecha_insc.sort_values()),
-    #                           y=list(vista.cant), name='Inscriptos Actuales', line=dict(color=colors['insc']),
-    #                           )
-    # data_fechas_lst.append(trace_fechas)
-    # data_fechas_lst.append(trace_fechas_3)
-    # data_fechas_lst.append(trace_fechas_2)
-    #
-    # # GRAFICO DE ESTADOS
-    # estado_values = []
-    # for i in estado_labels:
-    #     try:            value = data_estado_dic[i]
-    #     except:         value = 0
-    #     estado_values.append(value)
-    #
-    # data_estado_lst = []
-    #
-    #
-    # if input_value == 'Total Institución':
-    #     trace_estado = go.Bar(x=estado_labels, y=estado_values, name='sexos',
-    #                           text=estado_values, textposition='auto',
-    #                           marker_color = [colors['pend'],colors['act'],colors['poten'],colors['insc']] )
-    # else:
-    #     trace_estado = go.Bar(x=estado_labels, y=estado_values, name='sexos',
-    #                           text=estado_values, textposition='auto',
-    #                           marker_color = [colors['act'],colors['poten'],colors['insc']] )
-    #
-    # data_estado_lst.append(trace_estado)
-
-    try:
-        tabla.fecha_preinscripcion = pd.DatetimeIndex(tabla.fecha_preinscripcion).strftime("%d/%m/%Y")
-    except:
-        pass
+    try: tabla.fecha_preinscripcion = pd.DatetimeIndex(tabla.fecha_preinscripcion).strftime("%d/%m/%Y")
+    except: pass
 
     # FILE EXPORTING
     xlsx_io = io.BytesIO()
@@ -522,14 +414,6 @@ def update_datos(input_value):
     if input_value == 'Total Institución':
         return [input_value,
                 dic_nom_sigla[input_value],
-                # {
-                # 'data':data_fechas_lst,
-                # 'layout':layout_a,
-                # },
-                # {
-                # 'data': data_estado_lst,
-                # 'layout': layout_b,
-                # },
                 tabla.to_dict('records'),
                 [{"name": dic_columns[i], "id": i} for i in tabla.columns],
                 xls_string,
@@ -537,14 +421,6 @@ def update_datos(input_value):
     else:
         return [input_value,
                 'Sigla: ' + dic_nom_sigla[input_value],
-                # {
-                #     'data': data_fechas_lst,
-                #     'layout': layout_a,
-                # },
-                # {
-                #     'data': data_estado_lst,
-                #     'layout': layout_b,
-                # },
                 tabla.to_dict('records'),
                 [{"name": dic_columns[i], "id": i} for i in tabla.columns],
                 xls_string,
